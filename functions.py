@@ -60,8 +60,6 @@ def fuel_mixture(micros, qualities, densities, molar_masses):
     return mixture_xs
         
 
-    #fission cross section 
-
 def peak_power(peak_flux, micros, qualities, densities, molar_masses, energy_per_fission, radius, active_length):
 
     volume = np.pi * radius**2 * active_length
