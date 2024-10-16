@@ -16,3 +16,12 @@ def reynolds_number(velocity, diameter, density, viscosity):
     reynolds = (density * velocity * diameter) / viscosity
 
     return reynolds
+
+def hydraulic_diameter(passage_area, pitch, radius):
+    
+    # Calculate the hydraulic diameter
+    wetted_perimeter = 3 * pitch - 6 * radius + np.pi * radius
+
+    hydraulic_diameter = (4 * passage_area) / (wetted_perimeter)
+
+    return hydraulic_diameter
