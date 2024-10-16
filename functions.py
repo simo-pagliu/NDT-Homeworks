@@ -1,5 +1,6 @@
 #include libraries
 import numpy as np
+import nuclei_func as nf
 
 # Function to calculate the hydraulic flow parameters
 def hydraulic_flow(mass_flow_rate, density, pitch, diameter_out):
@@ -46,3 +47,27 @@ def power_profile(peak, nodes_center, amplitude, z_extrapolated):
     # Sum the lambda functions
     power_profile = lambda z: sum(component(z) for component in components)
     return power_profile
+
+def fuel_mixture(micros, qualities, densities, molar_masses):
+
+    macros = []
+    for i in range(len(micros)):
+        macros.append(nf.macro(micros[i], densities[i], molar_masses[i]))
+
+    # Calculate the mixture macroscopic cross section
+    mixture_xs = nf.mixture(macros, qualities)
+
+    return mixture_xs
+        
+
+    #fission cross section 
+
+def peak_power(peak_flux, micros, qualities, densities, molar_masses, energy_per_fission, radius, active_length):
+
+    volume = np.pi * radius**2 * active_length
+    fission_xs = fuel_mixture(micros, qualities, densities, molar_masses)
+    # Calculate the peak power
+    peak_power = peak_flux * fission_xs * energy_per_fission * volume 
+    peak_power_linear = peak_power / active_length
+
+    return peak_power_linear
