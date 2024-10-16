@@ -11,11 +11,6 @@ def hydraulic_flow(mass_flow_rate, density, pitch, diameter_out):
 
     return velocity, passage_area
 
-def reynolds_number(velocity, diameter, density, viscosity):
-    # Calculate the Reynolds number
-    reynolds = (density * velocity * diameter) / viscosity
-
-    return reynolds
 
 def hydraulic_diameter(passage_area, pitch, radius):
     
@@ -25,3 +20,19 @@ def hydraulic_diameter(passage_area, pitch, radius):
     hydraulic_diameter = (4 * passage_area) / (wetted_perimeter)
 
     return hydraulic_diameter
+
+def heat_trans_coefficient(density, diameter_out, mass_flow_rate, pitch, radius, viscosity, thermal_conductivity, c_p):
+
+    velocity, passage_area= hydraulic_flow(mass_flow_rate, density, pitch, diameter_out)
+    d_h = hydraulic_diameter(passage_area, pitch, radius)
+
+    # Parameters
+    reynolds = (density * velocity * d_h) / viscosity
+    prandtl = c_p * viscosity / thermal_conductivity
+    peclet = reynolds * prandtl
+    nusselt = 7 + 0.025 *peclet**0.8
+
+    #HTC calculation
+    htc = nusselt * thermal_conductivity / d_h
+
+    return htc
