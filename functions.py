@@ -36,3 +36,13 @@ def heat_trans_coefficient(density, diameter_out, mass_flow_rate, pitch, radius,
     htc = nusselt * thermal_conductivity / d_h
 
     return htc
+
+def power_profile(peak, nodes_center, amplitude, z_extrapolated):
+    components = [
+        lambda z, i=i: peak * amplitude[i] * np.cos(np.pi * (z - nodes_center[i]) / z_extrapolated)
+        for i in range(len(nodes_center))
+    ]
+
+    # Sum the lambda functions
+    power_profile = lambda z: sum(component(z) for component in components)
+    return power_profile
