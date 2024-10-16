@@ -1,5 +1,4 @@
 #include libraries
-
 import numpy as np
 
 # Function to calculate the hydraulic flow parameters
@@ -11,3 +10,9 @@ def hydraulic_flow(mass_flow_rate, density, pitch, diameter_out):
     velocity = mass_flow_rate / (density * passage_area)
 
     return velocity, passage_area
+
+def reynolds_number(velocity, diameter, density, viscosity):
+    # Calculate the Reynolds number
+    reynolds = (density * velocity * diameter) / viscosity
+
+    return reynolds
