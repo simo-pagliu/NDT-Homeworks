@@ -68,4 +68,5 @@ def peak_power(peak_flux, micros, qualities, densities, molar_masses, energy_per
     peak_power = peak_flux * fission_xs * energy_per_fission * volume 
     peak_power_linear = peak_power / active_length
 
+    #obtained value is in [W/m]
     return peak_power_linear
