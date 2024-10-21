@@ -30,17 +30,13 @@ def hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature):
     # Calculate the velocity of the fluid
     velocity = mass_flow_rate / (coolant.Density(temperature) * passage_area)
 
-    return velocity, passage_area
-
-
-def hydraulic_diameter(passage_area, pitch, radius):
     
     # Calculate the hydraulic diameter
-    wetted_perimeter = 3 * pitch - 6 * radius + np.pi * radius
+    wetted_perimeter = np.pi* diameter_out/2
 
     hydraulic_diameter = (4 * passage_area) / (wetted_perimeter)
 
-    return hydraulic_diameter
+    return velocity, passage_area, hydraulic_diameter
 
 def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, temperature):
     # Import material properties
@@ -50,8 +46,7 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, tempera
     c_p = coolant.Specific_Heat(temperature)
 
     # Calculate the velocity and passage area
-    velocity, passage_area= hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature)
-    d_h = hydraulic_diameter(passage_area, pitch, diameter_out/2)
+    velocity, passage_area, d_h = hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature)
 
     # Adimensional numbers
     reynolds = (density * velocity * d_h) / viscosity
@@ -63,7 +58,7 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, tempera
     #HTC calculation
     htc = nusselt * thermal_conductivity / d_h
 
-    return htc
+    return htc, reynolds, prandtl, peclet, nusselt, d_h
 
 def power_profile(peak, nodes_center, amplitude, z_extrapolated):
     components = [
