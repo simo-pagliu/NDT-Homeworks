@@ -5,6 +5,7 @@ Missing Data:
 
 To Fix:
 - Power Profile
+- HTC
   
 To Do:
 - Temperature profile in cold geometry
@@ -14,12 +15,11 @@ To Do:
 - Stress calculations
 
 To Test (code-wise):
-- 
+- Power Profile
 
 To Validate (physical result wise):
 - Coolant Velociy
 - Peak Power
-- HTC
 - Macroscopic Fission Cross-Section
 
 Done:
