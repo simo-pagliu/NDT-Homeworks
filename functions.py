@@ -25,7 +25,6 @@ class Material_Proprieties:
         
 # Function to calculate the hydraulic flow parameters
 def hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature):
-
     passage_area = ( 1/2 * pitch * pitch * np.sin(np.pi/3) ) - (1/2 * np.pi * (diameter_out/2)**2)
 
     # Calculate the velocity of the fluid
@@ -43,7 +42,7 @@ def hydraulic_diameter(passage_area, pitch, radius):
 
     return hydraulic_diameter
 
-def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, radius, coolant, temperature):
+def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, temperature):
     # Import material properties
     density = coolant.Density(temperature)
     viscosity = coolant.Viscosity(temperature)
@@ -51,14 +50,15 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, radius, coolant,
     c_p = coolant.Specific_Heat(temperature)
 
     # Calculate the velocity and passage area
-    velocity, passage_area= hydraulic_flow(mass_flow_rate, density, pitch, diameter_out)
-    d_h = hydraulic_diameter(passage_area, pitch, radius)
+    velocity, passage_area= hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature)
+    d_h = hydraulic_diameter(passage_area, pitch, diameter_out/2)
 
     # Adimensional numbers
     reynolds = (density * velocity * d_h) / viscosity
     prandtl = c_p * viscosity / thermal_conductivity
     peclet = reynolds * prandtl
     nusselt = coolant.Nusselt_Number(peclet)
+
 
     #HTC calculation
     htc = nusselt * thermal_conductivity / d_h
@@ -78,7 +78,7 @@ def power_profile(peak, nodes_center, amplitude, z_extrapolated):
 def fuel_mixture(fuel):
     micros = fuel.Micro_Fission
     qualities = fuel.Qualities
-    density = fuel.Density # The density of the mixture is given
+    density = fuel.Density # The density of the mixture is given, kg/m3 = g/cm3
     molar_masses = fuel.Molar_Mass
     
     macros = []
@@ -98,7 +98,6 @@ def peak_power(peak_flux, fuel, energy_per_fission, radius, active_length):
     fission_xs = fuel_mixture(fuel)
     # Calculate the peak power
     peak_power = peak_flux * fission_xs * energy_per_fission * volume 
-    peak_power_linear = peak_power / active_length
 
-    #obtained value is in [W/m]
-    return peak_power_linear
+    #obtained value is in [W]
+    return peak_power, fission_xs
