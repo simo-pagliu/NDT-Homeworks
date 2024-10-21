@@ -48,7 +48,6 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, tempera
     # Calculate the velocity and passage area
     velocity, passage_area, d_h = hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature)
 
-
     # Adimensional numbers
     reynolds = (density * velocity * d_h) / viscosity
     prandtl = c_p * viscosity / thermal_conductivity
