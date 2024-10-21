@@ -1,3 +1,5 @@
+import numpy as np
+
 # Heat
 
 # Heat Generation
@@ -64,3 +66,27 @@ T_gap(r) = T_gap_outer + q_i / (2 * math.pi * r * htc_gap) # Temperature Profile
 void_factor = 1 - (ln((R_fuel_outer/r)**2))/((R_fuel_outer/r)**2 - 1)
 K_fuel = correlation depending on T !
 T_fuel(r) = T_fuel_outer + q_i / (4 * math.pi * k_fuel) * void_factor # Temperature Profile in the fuel [K]
+
+
+
+
+h_from_c = [42.5, 127.5, 212.5, 297.5, 382.5, 467.5, 552.5, 637.5, 722.5, 807.5]
+lunghezza_h_from_c = len(h_from_c)
+
+# Definisco un vettore che mi restituisce il punto iniziale e finale di un singolo intervallo
+# In posizione dispari troviamo il punto iniziale dell'intervallo e in posizione pari il punto finale dell'intervallo
+lunghezza_intervallo = 1 + lunghezza_h_from_c
+intervallo = np.zeros(lunghezza_intervallo)
+intervallo[0] = 0
+intervallo[-1] = 850  # Usa -1 per l'ultimo elemento
+
+print(intervallo)
+
+for i in range(1, lunghezza_intervallo - 1):
+    # Calcola il valore medio degli intervalli
+    for j in range(len(h_from_c) - 1):  # Modifica qui
+        intervallo[i] = (h_from_c[j + 1] - h_from_c[j]) / 2
+        # Se vuoi calcolare più intervalli, dovresti considerare di accumulare i valori
+        # intervallo[i] = ... qui puoi fare una somma, ad esempio
+
+print(intervallo)
