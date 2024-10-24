@@ -96,3 +96,4 @@ def peak_power(peak_flux, fuel, energy_per_fission, radius, active_length):
 
     #obtained value is in [W]
     return peak_power, fission_xs
+
