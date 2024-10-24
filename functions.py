@@ -3,7 +3,33 @@ import numpy as np
 import nuclei_func as nf
 import matplotlib.pyplot as plt
 
-# Define the class for the Material Properties
+# Define a class for the geometry data of the reactor components
+class GeometryData:
+    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding):
+        self.fuel_outer_diameter = fuel_outer_diameter  # mm
+        self.fuel_inner_diameter = fuel_inner_diameter  # mm (0 if solid fuel pellet)
+        self.cladding_outer_diameter = cladding_outer_diameter  # mm
+        self.thickness_cladding = thickness_cladding  # mm
+
+    def get_fuel_radius(self):
+        return self.fuel_outer_diameter / 2
+
+    def get_cladding_radius(self):
+        return self.cladding_outer_diameter / 2
+
+    def get_effective_gap_size(self, fuel_roughness, cladding_roughness):
+        nominal_size = self.cladding_outer_diameter - self.fuel_outer_diameter - self.thickness_cladding
+        return nominal_size + fuel_roughness + cladding_roughness
+
+# Define a class for Thermo-Hydraulic specifications
+class ThermoHydraulicSpecs:
+    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, pin_pitch):
+        self.coolant_inlet_temp = coolant_inlet_temp  # K
+        self.coolant_inlet_pressure = coolant_inlet_pressure  # MPa
+        self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
+        self.pin_pitch = pin_pitch  # mm
+
+# Modify the Material_Proprieties class to include specific parameters related to coolant
 class Material_Proprieties:
     def __init__(self, Elements='', Qualities='', Density='', Molar_Mass='',Micro_Fission = '', Micro_Absorption = '', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number=''):
         self.Elements = Elements
@@ -23,7 +49,7 @@ class Material_Proprieties:
         self.Yield_Stress = Yield_Stress
         self.Ultimate_Tensile_Strength = Ultimate_Tensile_Strength
         self.Nusselt_Number = Nusselt_Number
-        
+
 # Function to calculate the hydraulic flow parameters
 def hydraulic_flow(mass_flow_rate, pitch, diameter_out, coolant, temperature):
     passage_area = ( 1/2 * pitch * pitch * np.sin(np.pi/3) ) - (1/2 * np.pi * (diameter_out/2)**2)
@@ -136,40 +162,31 @@ def thermal_resistance_fuel(Burnup, temperature, Oxigen_to_metal_ratio, Pu_conce
     return thermal_resistance
 
 ##################################################
-# Temperature Profiles with Height-dependent Temp_0
+# Temperature Profiles
 ##################################################
-def axial_T_profile(temperature_inlet, coolant, mass_flow_rate):
+def axial_T_profile_coolant(temperature_inlet, power, h, dz, coolant, mass_flow_rate, heights_of_slice_centre, peak_factors, q_linear_avg):
     # Computes axial temperature profile
-
     f = 1/2
     c_p = coolant.Specific_Heat(temperature_inlet)
-    z_in = 0
-
-    power = [0, 27.7120681, 35.7059339, 42.05257887, 46.4128693, 48.44767151, 47.62406109, 44.18427641, 38.85503255, 31.87856785, 24.12694041]
-    z = [0, 0.0425, 0.1275, 0.2125, 0.2975, 0.3825, 0.4675, 0.5525, 0.6375, 0.7225, 0.8075]
     
-    T_prof = []
+    power = power_profile(h, heights_of_slice_centre, peak_factors, q_linear_avg)
 
-    for i in range(len(z)):
-        if i == 0:
-            T_now = temperature_inlet
-            T_prof.append(T_now)
-        else: 
-            dz = z[i] - z [i-1]
-            T_old = T_now
-            T_now = T_old + power[i] *1e3* (dz) / (mass_flow_rate/f*c_p)
-            T_prof.append(T_now)
+    T_now = temperature_inlet + power * (dz) / (mass_flow_rate / f * c_p)
     
-    return z, T_prof
+    return T_now
   
 def temperature_profile(power, thermal_resistance, T_init):
     # Calculate final temperature given power and thermal resistance
     return T_init + power * thermal_resistance
 
-def get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances):
+def get_resistance(r, fuel_pellet_inner_diameter, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances):
     # Return appropriate thermal resistance based on the radius
     if r < fuel_pellet_outer_diameter:
-        return Resistances.Fuel
+        if fuel_pellet_inner_diameter == 0:
+            res = Resistances.Fuel * (- r**2)
+        else:
+            res = Resistances.Fuel * np.log(fuel_pellet_outer_diameter*1e-3/2 / r) / np.log(fuel_pellet_inner_diameter / fuel_pellet_outer_diameter)
+        return res
     elif r < fuel_pellet_outer_diameter + thickness_cladding:
         return Resistances.Gap
     elif r < cladding_outer_diameter:
@@ -177,32 +194,35 @@ def get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_o
     else:
         return Resistances.Coolant
 
-def compute_temperature_profile(Temp_0, reference_power_density, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+def compute_temperature_profile(Temp_0, reference_power_density, r_plot, Resistances, fuel_pellet_inner_diameter, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
     # Compute temperature profile for a given power density and radius plot
     T_plot = [Temp_0]
     for j, r in enumerate(r_plot[1:], start=1):
-        R = get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances)
+        R = get_resistance(r, fuel_pellet_inner_diameter ,fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances)
         T_plot.append(temperature_profile(reference_power_density, R, T_plot[j-1]))
     return T_plot
 
-def plot_3d_temperature_profile(Temp_0_function, h_values, r_plot, heights_of_slice_centre, peak_factors, q_linear_avg, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+def plot_3d_temperature_profile(h_values, r_plot, heights_of_slice_centre, peak_factors, q_linear_avg, Resistances, coolant, temperature_inlet, mass_flow_rate, fuel_pellet_inner_diameter, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
     # Create a 3D plot for temperature profiles at different heights and store the temperature matrix
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
+
+    dz = h_values[1] - h_values[0]
 
     # Arrays for 3D plotting
     X, Y = np.meshgrid(r_plot, h_values)
     Z = []
 
-    for h in h_values:
-        # Get the initial temperature based on the height
-        Temp_0 = Temp_0_function(h)
-        
+    Temp_0 = temperature_inlet
+    for h in h_values:       
         # Compute power profile at this height
         q = power_profile(h, heights_of_slice_centre, peak_factors, q_linear_avg)
+
+        # Get the initial temperature based on the height
+        Temp_0 = axial_T_profile_coolant(Temp_0, q, h, dz, coolant, mass_flow_rate, heights_of_slice_centre, peak_factors, q_linear_avg)
         
         # Compute temperature profile for this height
-        T_plot = compute_temperature_profile(Temp_0, q, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter)
+        T_plot = compute_temperature_profile(Temp_0, q, r_plot, Resistances, fuel_pellet_inner_diameter, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter)
         Z.append(T_plot)
 
     Z = np.array(Z)
