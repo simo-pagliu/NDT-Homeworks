@@ -138,7 +138,30 @@ def thermal_resistance_fuel(Burnup, temperature, Oxigen_to_metal_ratio, Pu_conce
 ##################################################
 # Temperature Profiles with Height-dependent Temp_0
 ##################################################
+def axial_T_profile(temperature_inlet, coolant, mass_flow_rate):
+    # Computes axial temperature profile
 
+    f = 1/2
+    c_p = coolant.Specific_Heat(temperature_inlet)
+    z_in = 0
+
+    power = [0, 27.7120681, 35.7059339, 42.05257887, 46.4128693, 48.44767151, 47.62406109, 44.18427641, 38.85503255, 31.87856785, 24.12694041]
+    z = [0, 0.0425, 0.1275, 0.2125, 0.2975, 0.3825, 0.4675, 0.5525, 0.6375, 0.7225, 0.8075]
+    
+    T_prof = []
+
+    for i in range(len(z)):
+        if i == 0:
+            T_now = temperature_inlet
+            T_prof.append(T_now)
+        else: 
+            dz = z[i] - z [i-1]
+            T_old = T_now
+            T_now = T_old + power[i] *1e3* (dz) / (mass_flow_rate/f*c_p)
+            T_prof.append(T_now)
+    
+    return z, T_prof
+  
 def temperature_profile(power, thermal_resistance, T_init):
     # Calculate final temperature given power and thermal resistance
     return T_init + power * thermal_resistance
