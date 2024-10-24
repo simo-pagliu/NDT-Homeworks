@@ -1,6 +1,7 @@
 #include libraries
 import numpy as np
 import nuclei_func as nf
+import matplotlib.pyplot as plt
 
 # Define the class for the Material Properties
 class Material_Proprieties:
@@ -87,17 +88,30 @@ def fuel_mixture(fuel):
 
     # Calculate the mixture macroscopic cross section
     mixture_xs = nf.mixture(macros, qualities)
-
+    
     return mixture_xs
         
 
-def peak_power(peak_flux, fuel, energy_per_fission, radius, active_length):
-    # Calculate the volume of the fuel   
-    volume = np.pi * radius**2 * active_length
-    # Calculate the fission cross section
-    fission_xs = fuel_mixture(fuel)
-    # Calculate the peak power
-    peak_power = peak_flux * fission_xs * energy_per_fission * volume 
+def axial_T_profile(temperature_inlet, coolant, mass_flow_rate):
+    # Computes axial temperature profile
 
-    #obtained value is in [W]
-    return peak_power, fission_xs
+    f = 1/2
+    c_p = coolant.Specific_Heat(temperature_inlet)
+    z_in = 0
+
+    power = [0, 27.7120681, 35.7059339, 42.05257887, 46.4128693, 48.44767151, 47.62406109, 44.18427641, 38.85503255, 31.87856785, 24.12694041]
+    z = [0, 0.0425, 0.1275, 0.2125, 0.2975, 0.3825, 0.4675, 0.5525, 0.6375, 0.7225, 0.8075]
+    
+    T_prof = []
+
+    for i in range(len(z)):
+        if i == 0:
+            T_now = temperature_inlet
+            T_prof.append(T_now)
+        else: 
+            dz = z[i] - z [i-1]
+            T_old = T_now
+            T_now = T_old + power[i] *1e3* (dz) / (mass_flow_rate/f*c_p)
+            T_prof.append(T_now)
+    
+    return z, T_prof
