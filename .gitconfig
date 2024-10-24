@@ -1,3 +1,5 @@
-[filter "strip-notebook-output"]
-    clean = jq --indent 1 'del(.cells[].execution_count, .metadata, .cells[].metadata)'
-    smudge = cat
+[difftool "nbdime"]
+        cmd = git-nbdifftool diff --ignore-outputs --ignore-metadata --ignore-details \"$LOCAL\" \"$REMOTE\"
+
+[diff "jupyternotebook"]
+        command = git-nbdiffdriver diff --ignore-outputs --ignore-metadata --ignore-details
