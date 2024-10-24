@@ -1,6 +1,7 @@
 #include libraries
 import numpy as np
 import nuclei_func as nf
+import matplotlib.pyplot as plt
 
 # Define the class for the Material Properties
 class Material_Proprieties:
@@ -77,7 +78,7 @@ def power_profile(h, h_from_c, peak_factors, q_linear_avg):
             return power_values[i]
 
 ##################################################
-# Radial Temperature Profile
+# Thermal Resistances
 ##################################################
 def thermal_resistance_coolant(radius_cladding_out, coolant_htc):
     # Calculate the thermal resistance of the coolant
@@ -123,7 +124,6 @@ def thermal_resistance_fuel(Burnup, temperature, Oxigen_to_metal_ratio, Pu_conce
     B = 2.39e-4 + 1.37e-13 * Pu_concentration
     D = 5.27e9
     E = 17109.5
-    beta = 1  # You might need to provide the actual value of beta
 
     # Calculate k_0
     k_0 = (1 / (A + B * temperature) + D / (temperature**2) * np.exp(-E / temperature)) * (1 - porosity)**2.5
@@ -135,8 +135,9 @@ def thermal_resistance_fuel(Burnup, temperature, Oxigen_to_metal_ratio, Pu_conce
     thermal_resistance = 1 / (4 * np.pi * k)
     return thermal_resistance
 
-import numpy as np
-import matplotlib.pyplot as plt
+##################################################
+# Temperature Profiles with Height-dependent Temp_0
+##################################################
 
 def temperature_profile(power, thermal_resistance, T_init):
     # Calculate final temperature given power and thermal resistance
@@ -153,15 +154,15 @@ def get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_o
     else:
         return Resistances.Coolant
 
-def compute_temperature_profile(T_0, reference_power_density, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+def compute_temperature_profile(Temp_0, reference_power_density, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
     # Compute temperature profile for a given power density and radius plot
-    T_plot = [T_0]
+    T_plot = [Temp_0]
     for j, r in enumerate(r_plot[1:], start=1):
         R = get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances)
         T_plot.append(temperature_profile(reference_power_density, R, T_plot[j-1]))
     return T_plot
 
-def plot_3d_temperature_profile(T_0, h_values, r_plot, heights_of_slice_centre, peak_factors, q_linear_avg, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+def plot_3d_temperature_profile(Temp_0_function, h_values, r_plot, heights_of_slice_centre, peak_factors, q_linear_avg, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
     # Create a 3D plot for temperature profiles at different heights and store the temperature matrix
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -171,8 +172,14 @@ def plot_3d_temperature_profile(T_0, h_values, r_plot, heights_of_slice_centre, 
     Z = []
 
     for h in h_values:
+        # Get the initial temperature based on the height
+        Temp_0 = Temp_0_function(h)
+        
+        # Compute power profile at this height
         q = power_profile(h, heights_of_slice_centre, peak_factors, q_linear_avg)
-        T_plot = compute_temperature_profile(T_0, q, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter)
+        
+        # Compute temperature profile for this height
+        T_plot = compute_temperature_profile(Temp_0, q, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter)
         Z.append(T_plot)
 
     Z = np.array(Z)
