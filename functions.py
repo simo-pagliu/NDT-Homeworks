@@ -58,41 +58,22 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, tempera
     #HTC calculation
     htc = nusselt * thermal_conductivity / d_h
 
-    return htc, reynolds, prandtl, peclet, nusselt, d_h
+    return htc, reynolds, prandtl, peclet, nusselt, d_h   
 
-def power_profile(peak, nodes_center, amplitude, z_extrapolated):
-    components = [
-        lambda z, i=i: peak * amplitude[i] * np.cos(np.pi * (z - nodes_center[i]) / z_extrapolated)
-        for i in range(len(nodes_center))
-    ]
+# Define a function that outputs a power value for a given h
+def power_profile_step(h, h_from_c, peak_factors, q_linear_avg):
+    # Computes peak power such that the average power is q_linear_avg
+    peak_value = q_linear_avg * len(peak_factors) / sum(peak_factors)
 
-    # Sum the lambda functions
-    power_profile = lambda z: sum(component(z) for component in components)
-    return power_profile
+    # Compute power values for each interval
+    power_values = [peak_value * factor for factor in peak_factors]
 
-def fuel_mixture(fuel):
-    micros = fuel.Micro_Fission
-    qualities = fuel.Qualities
-    density = fuel.Density # The density of the mixture is given, kg/m3 = g/cm3
-    molar_masses = fuel.Molar_Mass
-    
-    macros = []
-    for i in range(len(micros)):
-        macros.append(nf.macro(micros[i], density, molar_masses[i]))
+    # Find the interval that h belongs to
+    length_h_from_c = len(h_from_c)
+    interval_boundaries = [0] + [(h_from_c[i] + h_from_c[i + 1]) / 2 for i in range(length_h_from_c - 1)] + [850]
 
-    # Calculate the mixture macroscopic cross section
-    mixture_xs = nf.mixture(macros, qualities)
+    for i in range(length_h_from_c):
+        if interval_boundaries[i] <= h <= interval_boundaries[i + 1]:
+            return power_values[i]
+    return power_values[-1]  # Return the last power value for h = 850
 
-    return mixture_xs
-        
-
-def peak_power(peak_flux, fuel, energy_per_fission, radius, active_length):
-    # Calculate the volume of the fuel   
-    volume = np.pi * radius**2 * active_length
-    # Calculate the fission cross section
-    fission_xs = fuel_mixture(fuel)
-    # Calculate the peak power
-    peak_power = peak_flux * fission_xs * energy_per_fission * volume 
-
-    #obtained value is in [W]
-    return peak_power, fission_xs
