@@ -83,3 +83,5 @@ plt.title('Interval Start, End, Midpoints, and Smoothed Cosine Function with Pea
 plt.grid(True)
 plt.legend()
 plt.show()
+
+# test
