@@ -61,7 +61,7 @@ def heat_trans_coefficient(diameter_out, mass_flow_rate, pitch, coolant, tempera
     return htc, reynolds, prandtl, peclet, nusselt, d_h   
 
 # Define a function that outputs a power value for a given h
-def power_profile_step(h, h_from_c, peak_factors, q_linear_avg):
+def power_profile(h, h_from_c, peak_factors, q_linear_avg):
     # Computes peak power such that the average power is q_linear_avg
     peak_value = q_linear_avg * len(peak_factors) / sum(peak_factors)
 
@@ -75,7 +75,6 @@ def power_profile_step(h, h_from_c, peak_factors, q_linear_avg):
     for i in range(length_h_from_c):
         if interval_boundaries[i] <= h <= interval_boundaries[i + 1]:
             return power_values[i]
-    return power_values[-1]  # Return the last power value for h = 850
 
 ##################################################
 # Radial Temperature Profile
@@ -135,3 +134,64 @@ def thermal_resistance_fuel(Burnup, temperature, Oxigen_to_metal_ratio, Pu_conce
     # Calculate the thermal resistance of the fuel
     thermal_resistance = 1 / (4 * np.pi * k)
     return thermal_resistance
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def temperature_profile(power, thermal_resistance, T_init):
+    # Calculate final temperature given power and thermal resistance
+    return T_init + power * thermal_resistance
+
+def get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances):
+    # Return appropriate thermal resistance based on the radius
+    if r < fuel_pellet_outer_diameter:
+        return Resistances.Fuel
+    elif r < fuel_pellet_outer_diameter + thickness_cladding:
+        return Resistances.Gap
+    elif r < cladding_outer_diameter:
+        return Resistances.Cladding
+    else:
+        return Resistances.Coolant
+
+def compute_temperature_profile(T_0, reference_power_density, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+    # Compute temperature profile for a given power density and radius plot
+    T_plot = [T_0]
+    for j, r in enumerate(r_plot[1:], start=1):
+        R = get_resistance(r, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter, Resistances)
+        T_plot.append(temperature_profile(reference_power_density, R, T_plot[j-1]))
+    return T_plot
+
+def plot_3d_temperature_profile(T_0, h_values, r_plot, heights_of_slice_centre, peak_factors, q_linear_avg, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter):
+    # Create a 3D plot for temperature profiles at different heights and store the temperature matrix
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Arrays for 3D plotting
+    X, Y = np.meshgrid(r_plot, h_values)
+    Z = []
+
+    for h in h_values:
+        q = power_profile(h, heights_of_slice_centre, peak_factors, q_linear_avg)
+        T_plot = compute_temperature_profile(T_0, q, r_plot, Resistances, fuel_pellet_outer_diameter, thickness_cladding, cladding_outer_diameter)
+        Z.append(T_plot)
+
+    Z = np.array(Z)
+
+    # Plotting the surface
+    ax.plot_surface(X, Y, Z, cmap='viridis')
+    ax.set_xlabel('Radius (mm)')
+    ax.set_ylabel('Height (mm)')
+    ax.set_zlabel('Temperature (K)')
+    ax.set_title("3D Temperature Profile vs. Radius and Height (q_values)")
+    plt.show()
+
+    return X, Y, Z
+
+def get_temperature_at_point(h, r, X, Y, Z):
+    # Get temperature at a specific height and radius using precomputed matrix Z
+    # Find the closest indices in X and Y to the input r and h
+    h_idx = np.argmin(np.abs(Y[:, 0] - h))
+    r_idx = np.argmin(np.abs(X[0, :] - r))
+
+    # Extract the corresponding temperature from Z
+    return Z[h_idx, r_idx]
