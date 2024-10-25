@@ -48,12 +48,15 @@ class GeometryData:
 
 # Thermo Hydraulics Specs
 class ThermoHydraulicSpecs:
-    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, neutron_flux_peak):
+    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, h_peak_factor, peak_factors, neutron_flux_peak):
         self.coolant_inlet_temp = coolant_inlet_temp  # K
         self.coolant_inlet_pressure = coolant_inlet_pressure  # Pa
         self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
         self.q_linear_avg = q_linear_avg  # W/m
+        self.h_peak_factor = h_peak_factor  # W/m
+        self.peak_factors = peak_factors
         self.neutron_flux_peak = neutron_flux_peak  # kg/s
+        
 
 # Define temperature map
 class Temperature_Map:
@@ -108,12 +111,16 @@ def heat_trans_coefficient(geom_data, thermo_hyd_spec, coolant, temperature):
     return htc, reynolds, prandtl, peclet, nusselt, d_h
 
 # Define a function that outputs a power value for a given h
-def power_profile(h, h_from_c, peak_factors, q_linear_avg):
+def power_profile(h, thermo_hyd_spec):
+    pf = thermo_hyd_spec.peak_factors
+    h_from_c = thermo_hyd_spec.h_peak_factor
+    q = thermo_hyd_spec.q_linear_avg
+    
     # Computes peak power such that the average power is q_linear_avg
-    peak_value = q_linear_avg * len(peak_factors) / sum(peak_factors)
+    peak_value = q * len(pf) / sum(pf)
 
     # Compute power values for each interval
-    power_values = [peak_value * factor for factor in peak_factors]
+    power_values = [peak_value * factor for factor in pf]
 
     # Find the interval that h belongs to
     length_h_from_c = len(h_from_c)
@@ -173,12 +180,12 @@ def thermal_resistance_fuel(Burnup, temperature, fuel):
 ##################################################
 # Temperature Profiles
 ##################################################
-def axial_T_profile_coolant(Temp_old, thermo_hyd_spec, power, h, dz, coolant, heights_of_slice_centre, peak_factors, q_linear_avg):
+def axial_T_profile_coolant(Temp_old, thermo_hyd_spec, power, h, dz, coolant):
     f = 1/2
     c_p = coolant.Specific_Heat(Temp_old)
     m_rate = thermo_hyd_spec.coolant_mass_flow_rate
 
-    power = power_profile(h, heights_of_slice_centre, peak_factors, q_linear_avg)
+    power = power_profile(h, thermo_hyd_spec)
 
     T_now = Temp_old + power * dz / ( m_rate / f * c_p)
     return T_now
@@ -239,7 +246,7 @@ def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, fu
         
     return T_radial
 
-def temperature_profile_3D(r_values, heights_of_slice_centre, peak_factors, Resistances, coolant, thermo_hyd_spec, geom_data, fuel_data, Burnup):
+def temperature_profile_3D(r_values, Resistances, coolant, thermo_hyd_spec, geom_data, fuel_data, Burnup):
     h_values = geom_data.h_values
 
     # Compute the height of each slice
@@ -255,9 +262,9 @@ def temperature_profile_3D(r_values, heights_of_slice_centre, peak_factors, Resi
 
     # Compute the temperature profile for each height step
     for h in h_values: 
-        q = power_profile(h, heights_of_slice_centre, peak_factors, thermo_hyd_spec.q_linear_avg)
+        q = power_profile(h, thermo_hyd_spec)
         # Compute temperature profile
-        Temp_coolant = axial_T_profile_coolant(Temp_coolant, thermo_hyd_spec, q, h, dz, coolant, heights_of_slice_centre, peak_factors, thermo_hyd_spec.q_linear_avg)
+        Temp_coolant = axial_T_profile_coolant(Temp_coolant, thermo_hyd_spec, q, h, dz, coolant)
         T_plot = radial_temperature_profile(Temp_coolant, q, r_values, geom_data, Resistances, fuel_data, Burnup)
         Z.append(T_plot)
 
