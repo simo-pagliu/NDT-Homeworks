@@ -7,25 +7,30 @@
 
 # Progress Tracking:
 To Fix:
-- Temperature axially coolant @ h=0 == t_initial_coolant (to be forced)
-- Temperature profile radially in the gap (?) from handouts deltaT should be much larger
+- Proper thermal laws for gap and fuel
 
 To Find data on:
-- Fuel roughness
-- Cladding roughness
-- Fuel Emissivity
-- Cladding Emissivity
+- Fuel roughness --> DONE, code it
+- Cladding roughness --> DONE, code it
+- Fuel Emissivity --> DONE, write it down properly below
+- Cladding Emissivity --> DONE, write it down properly below
 
 To Find data on (not now):
 - Cladding hardness (only if we have to consider contact between fuel and cladding)
   
-To Do:
-- All axial temperature profiles
+To Do (functions):
+- Thermal expansion function: Input: Geometry_Data & T_map --> Output: Geometry_Data
+- Pu redistribution: does it needs to be calculated by itself?
+- Central void formation function: Input: Geometry_Data & T_map --> Output: Geometry_Data
+- Stress computations: ???
+  
+To Do (code):
+For each evaluation of the gap & cladding size we have to Loop for:
+- T_fuel_out in gap HTC
+- Thermal expansion & Void (hot geom)
+
+To Do (considerations):
 - What can we neglect?
-- Thermal Expansion
-- Temperature profile in hot geometry (with proper neglectionsz)
-- Stress calculations (?)
-- Pu redistribution
 
 To Do ("side quests"):
 - Reformat of function arguments by "classifing" free variables
@@ -61,4 +66,5 @@ Done (code-wise):
 - Hydraulics parameters
 - Axial power profile
 - Temperature profile radially
-- Temperature profile axially (ongoing)
+- Temperature profile axially
+- All axial temperature profiles
