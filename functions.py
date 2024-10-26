@@ -145,36 +145,37 @@ def thermal_resistance_cladding(geom_data, cladding, temperature):
     thermal_resistance = np.log(radius_cladding_out / radius_cladding_in) / (2 * np.pi * k)
     return thermal_resistance
 
-def thermal_resistance_gap(geom_data, helium, fuel, cladding, temperature_gas, temperature_fuel_out, temperature_cladding_in, contact_pressure, cladding_hardness, C):
+def thermal_resistance_gap(geom_data, helium, fuel, cladding):
     radius_gap_in = geom_data.fuel_outer_diameter / 2
 
     # Conductive heat transfer
-    conduction = helium.Thermal_Conductivity(temperature_gas) / geom_data.effective_gap_size
+    conduction = lambda t_gas: helium.Thermal_Conductivity(t_gas) / geom_data.effective_gap_size
 
     # Radiative heat transfer
-    radiation = 4 * 5.67e-8 * (temperature_fuel_out**3) / (1/(fuel.Emissivity) + 1/(cladding.Emissivity) - 1)
+    radiation = lambda t_fuel_out: 4 * 5.67e-8 * (t_fuel_out**3) / (1/(fuel.Emissivity) + 1/(cladding.Emissivity) - 1)
 
     # Overall heat transfer coefficient
-    htc = conduction + radiation
+    htc = lambda t_gas, t_fuel_out: conduction(t_gas) + radiation(t_fuel_out)
 
     # Calculate the thermal resistance of the gap
-    thermal_resistance = 1 / (2 * np.pi * radius_gap_in * htc)
+    thermal_resistance = lambda t_gas, t_fuel_out: 1 / (2 * np.pi * radius_gap_in * htc(t_gas, t_fuel_out))
+
     return thermal_resistance
 
-def thermal_resistance_fuel(Burnup, temperature, fuel):
+def thermal_resistance_fuel(Burnup, fuel):
     A = 0.01926 + 1.06e-6 * fuel.Oxigen_to_metal_ratio + 2.63e-8 * fuel.Molar_Mass[-1]
     B = 2.39e-4 + 1.37e-13 * fuel.Molar_Mass[-1]
     D = 5.27e9
     E = 17109.5
 
     # Calculate k_0
-    k_0 = (1 / (A + B * temperature) + D / (temperature**2) * np.exp(-E / temperature)) * (1 - fuel.Porosity)**2.5
+    k_0 = lambda temperature: (1 / (A + B * temperature) + D / (temperature**2) * np.exp(-E / temperature)) * (1 - fuel.Porosity)**2.5
 
     # Calculate final thermal conductivity k
-    k = 1.755 + (k_0 - 1.755) * np.exp(-Burnup / 128.75)
+    k = lambda temperature: 1.755 + (k_0(temperature) - 1.755) * np.exp(-Burnup / 128.75)
 
     # Calculate the thermal resistance of the fuel
-    thermal_resistance = 1 / (4 * np.pi * k)
+    thermal_resistance = lambda temperature: 1 / (4 * np.pi * k(temperature))
     return thermal_resistance
 
 ##################################################
@@ -190,63 +191,50 @@ def axial_T_profile_coolant(Temp_old, thermo_hyd_spec, power, h, dz, coolant):
     T_now = Temp_old + power * dz / ( m_rate / f * c_p)
     return T_now
 
-def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, fuel_data, Burnup):
+def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_fuel_out, Burnup):
     # Initialize the temperature profile
-    T_radial = [Temp_0]
-    
-    # Find the index of the gap outer diameter == cladding inner diameter
-    idx_gap_r = np.argmin(np.abs(r_plot - geom_data.cladding_outer_diameter/2 - geom_data.thickness_cladding))
-    
-    # Find the index of the fuel outer diameter
-    idx_fuel_r = np.argmin(np.abs(r_plot - geom_data.fuel_outer_diameter/2))
-    
-    for j, r in enumerate(r_plot[1:], start=1):
-        # Get the thermal resistance
-        dr = r_plot[j] - r_plot[j-1]
-        
+    T_radial = [Temp_0] # Temperature of the coolant (ideally at r = infinity)
+    dr = r_plot[0] - r_plot[1]
+
+    # Create Limits
+    r_coolant_cladding = geom_data.cladding_outer_diameter / 2
+    r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
+    r_gap_fuel = geom_data.fuel_outer_diameter / 2
+
+    # Find the indexes of the limits
+    idx_gap_r = np.argmin(np.abs(r_plot - r_cladding_gap))
+    idx_fuel_r = np.argmin(np.abs(r_plot - r_gap_fuel))
+
+
+    for j, r in enumerate(r_plot[1:], start=1):       
         # In the pellet
-        if r < geom_data.fuel_outer_diameter/2:
-            th_res = thermal_resistance_fuel(Burnup, T_radial[j-1], fuel_data)
-            # Solid fuel pellet
-            if geom_data.fuel_inner_diameter == 0: 
-                r_out = geom_data.fuel_outer_diameter / 2
-                res = th_res * (1 - (r/r_out)**2)
-                
-            # Hollow fuel pellet
-            else: 
-                r_out = geom_data.fuel_outer_diameter / 2
-                r_in = geom_data.fuel_inner_diameter / 2 
-                
-                res = th_res * np.log(r_out/r) / np.log(r_in/r_out)
-            
+        if r < r_gap_fuel:
+            th_res = Resistances.Fuel(T_radial[j-1])
             # Compute the temperature
-            T_value = T_radial[j-1] + power * res * r
-            
+            T_value = T_radial[j-1] + power * th_res * dr / (r_gap_fuel - r_plot[-1])
+        
         # In the gap
-        elif r < geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding:
-            r_out = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
-            r_in = geom_data.fuel_outer_diameter / 2
-            res = Resistances.Gap * np.log(r_out/r) / np.log(r_in/r_out) 
-            
+        elif r < r_cladding_gap:
+            th_res = Resistances.Gap(T_radial[j-1], T_fuel_out)
             # Compute the temperature
-            T_value = T_radial[j-1] + power * res * r
+            T_value = T_radial[j-1] + power * th_res * dr / (r_cladding_gap - r_gap_fuel)
             
         # In the cladding
-        elif r < geom_data.cladding_outer_diameter/2:
-            res = Resistances.Cladding
-            T_value = T_radial[j-1] + power * res
+        elif r < r_coolant_cladding:
+            th_res = Resistances.Cladding
+            T_value = T_radial[j-1] + power * th_res * dr / (r_coolant_cladding - r_cladding_gap)
             
         # In the coolant
         else:
-            res = Resistances.Coolant
-            T_value = T_radial[j-1] + power * res
+            th_res = Resistances.Coolant
+            T_value = T_radial[j-1] + power * th_res * dr / (r_plot[0] - r_coolant_cladding)
 
         # Compute new value of T
         T_radial.append(T_value)
         
     return T_radial
 
-def temperature_profile_3D(r_values, Resistances, coolant, thermo_hyd_spec, geom_data, fuel_data, Burnup):
+def temperature_profile_3D(r_values, Resistances, coolant, thermo_hyd_spec, geom_data, T_fuel_out, Burnup):
     h_values = geom_data.h_values
 
     # Compute the height of each slice
@@ -265,7 +253,7 @@ def temperature_profile_3D(r_values, Resistances, coolant, thermo_hyd_spec, geom
         q = power_profile(h, thermo_hyd_spec)
         # Compute temperature profile
         Temp_coolant = axial_T_profile_coolant(Temp_coolant, thermo_hyd_spec, q, h, dz, coolant)
-        T_plot = radial_temperature_profile(Temp_coolant, q, r_values, geom_data, Resistances, fuel_data, Burnup)
+        T_plot = radial_temperature_profile(Temp_coolant, q, r_values, geom_data, Resistances, T_fuel_out, Burnup)
         Z.append(T_plot)
 
     Z = np.array(Z)
