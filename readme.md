@@ -54,10 +54,10 @@ To Validate (physical result wise):
 Validated:
 - Sodium Coolant Density, Viscosity, $C_p$   
 [IAEA](https://inis.iaea.org/collection/NCLCollectionStore/_Public/14/776/14776927.pdf)
-
-Data we had to get by ourselves:
-- Fission Cross section ENDF/B-VI.8
-- Energy per Fission
+- Pellet roughness (found ourselves) [NEA](https://www.oecd-nea.org/upload/docs/application/pdf/2019-12/6291-mox.pdf)
+- Stainless steel roughness (found ourselves) [Engineering Toolbox](https://www.engineeringtoolbox.com/surface-roughness-ventilation-ducts-d_209.html): roughness goes from 6 $\mu m$ to 0.8 $\mu m$
+Data on Steel:
+[TheWorldMaterial Blog](https://www.theworldmaterial.com/type-304-grade-stainless-steel/)
 
 Possible other refs:
 [Sodium Handbook](https://www-pub.iaea.org/MTCD/publications/PDF/CRCP_SOD_003web.pdf)
