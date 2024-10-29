@@ -1,5 +1,0 @@
-[difftool "nbdime"]
-        cmd = git-nbdifftool diff --ignore-outputs --ignore-metadata --ignore-details \"$LOCAL\" \"$REMOTE\"
-
-[diff "jupyternotebook"]
-        command = git-nbdiffdriver diff --ignore-outputs --ignore-metadata --ignore-details
