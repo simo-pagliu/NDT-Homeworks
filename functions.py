@@ -194,40 +194,36 @@ def axial_T_profile_coolant(Temp_old, thermo_hyd_spec, power, h, dz, coolant):
 def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_fuel_out, Burnup):
     # Initialize the temperature profile
     T_radial = [Temp_0] # Temperature of the coolant (ideally at r = infinity)
-    dr = r_plot[0] - r_plot[1]
 
     # Create Limits
     r_coolant_cladding = geom_data.cladding_outer_diameter / 2
     r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
     r_gap_fuel = geom_data.fuel_outer_diameter / 2
 
-    # Find the indexes of the limits
-    idx_gap_r = np.argmin(np.abs(r_plot - r_cladding_gap))
-    idx_fuel_r = np.argmin(np.abs(r_plot - r_gap_fuel))
+    for j, r in enumerate(r_plot[1:], start=1): 
+        dr = r_plot[j-1] - r_plot[j]
 
-
-    for j, r in enumerate(r_plot[1:], start=1):       
         # In the pellet
         if r < r_gap_fuel:
             th_res = Resistances.Fuel(T_radial[j-1])
             # Compute the temperature
-            T_value = T_radial[j-1] + power * th_res * dr / (r_gap_fuel - r_plot[-1])
+            T_value = T_radial[j-1] + power * th_res * (dr / (r_gap_fuel - r_plot[-1]))
         
         # In the gap
         elif r < r_cladding_gap:
             th_res = Resistances.Gap(T_radial[j-1], T_fuel_out)
             # Compute the temperature
-            T_value = T_radial[j-1] + power * th_res * dr / (r_cladding_gap - r_gap_fuel)
+            T_value = T_radial[j-1] + power * th_res * (dr / (r_cladding_gap - r_gap_fuel))
             
         # In the cladding
         elif r < r_coolant_cladding:
             th_res = Resistances.Cladding
-            T_value = T_radial[j-1] + power * th_res * dr / (r_coolant_cladding - r_cladding_gap)
+            T_value = T_radial[j-1] + power * th_res * (dr / (r_coolant_cladding - r_cladding_gap))
             
         # In the coolant
         else:
             th_res = Resistances.Coolant
-            T_value = T_radial[j-1] + power * th_res * dr / (r_plot[0] - r_coolant_cladding)
+            T_value = T_radial[j-1] + power * th_res * (dr / (r_plot[0] - r_coolant_cladding))
 
         # Compute new value of T
         T_radial.append(T_value)
