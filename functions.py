@@ -200,6 +200,11 @@ def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_
     r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
     r_gap_fuel = geom_data.fuel_outer_diameter / 2
 
+    # Index of the interfaces
+    idx_fuel = np.argmin(np.abs(r_plot - r_gap_fuel))
+    idx_gap = np.argmin(np.abs(r_plot - r_cladding_gap))
+
+    # Compute the temperature profile
     for j, r in enumerate(r_plot[1:], start=1): 
         dr = r_plot[j-1] - r_plot[j]
 
@@ -207,7 +212,7 @@ def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_
         if r < r_gap_fuel:
             th_res = Resistances.Fuel(T_radial[j-1])
             # Compute the temperature
-            T_value = T_radial[j-1] + power * th_res * (dr / (r_gap_fuel - r_plot[-1]))
+            T_value = T_radial[idx_fuel] + power * th_res * (1 - (r/r_gap_fuel)**2)
         
         # In the gap
         elif r < r_cladding_gap:
