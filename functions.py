@@ -48,11 +48,12 @@ class GeometryData:
 
 # Thermo Hydraulics Specs
 class ThermoHydraulicSpecs:
-    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, h_peak_factor, peak_factors, neutron_flux_peak):
+    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, uptime, h_peak_factor, peak_factors, neutron_flux_peak):
         self.coolant_inlet_temp = coolant_inlet_temp  # K
         self.coolant_inlet_pressure = coolant_inlet_pressure  # Pa
         self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
         self.q_linear_avg = q_linear_avg  # W/m
+        self.uptime = uptime
         self.h_peak_factor = h_peak_factor  # W/m
         self.peak_factors = peak_factors
         self.neutron_flux_peak = neutron_flux_peak  # kg/s
@@ -111,13 +112,15 @@ def heat_trans_coefficient(geom_data, thermo_hyd_spec, coolant, temperature):
     return htc, reynolds, prandtl, peclet, nusselt, d_h
 
 # Define a function that outputs a power value for a given h
-def power_profile(h, thermo_hyd_spec):
+def power_profile(h, thermo_hyd_spec, value = 'power'):
     pf = thermo_hyd_spec.peak_factors
     h_from_c = thermo_hyd_spec.h_peak_factor
-    q = thermo_hyd_spec.q_linear_avg
-    
+    if value == 'power':
+        q = thermo_hyd_spec.q_linear_avg
+        peak_value = q * len(pf) / sum(pf)
+    elif value == 'neutron_flux':
+        peak_value = thermo_hyd_spec.neutron_flux_peak
     # Computes peak power such that the average power is q_linear_avg
-    peak_value = q * len(pf) / sum(pf)
 
     # Compute power values for each interval
     power_values = [peak_value * factor for factor in pf]
@@ -263,3 +266,22 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     h_idx = np.argmin(np.abs(h_values[:, 0] - h_requested))
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
+
+##################################################
+# Void Formation
+##################################################
+def void_swelling(T_map, geom_data, thermo_hyd_spec):
+    Volume_expansion_fission_gas = []
+    r_fuel = geom_data.fuel_outer_diameter / 2
+    idx_fuel = np.argmin(np.abs(T_map.r[0, :] - r_fuel))
+    r_vals = T_map.r[0, idx_fuel:-1]
+    
+    for h in T_map.h[:, 0]:
+        phi = power_profile(h, thermo_hyd_spec, value = 'neutron_flux') * thermo_hyd_spec.uptime
+
+        temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
+        temperature_avg = np.mean(temperature)
+
+        temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
+        Volume_expansion_fission_gas.append(temp)
+    return Volume_expansion_fission_gas
