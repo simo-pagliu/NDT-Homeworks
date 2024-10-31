@@ -33,6 +33,18 @@ vars = DimensioningData(
     filling_gas_temperature = 20,  # °C
     temperature_map = ''
 )
+# %% Compute the burnup, just once since it's constant
+# Burnup
+# s --> days
+# W/m * m --> W
+# m^3
+# g/cm^3 --> kg/m^3
+Burnup = ThermoHydraulics.uptime / (24*3600) \
+        * ThermoHydraulics.q_linear_avg * Geometrical_Data.h_values[-1] \
+        / (np.pi * (Geometrical_Data.fuel_outer_diameter/2)**2 * Geometrical_Data.h_values[-1] \
+        * Fuel_Proprieties.Density*1000)
+Burnup = Burnup * 1e-6  # Wd/kgU * 1e-9/1e-3 --> GWd/t(HM) 
+print(Burnup)
 
 # %% Tempearture Map
 import time
