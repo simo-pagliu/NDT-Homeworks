@@ -264,7 +264,7 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
 
-def cold_to_hot_fuel (Fuel, Geometrical_Data, vars, h_vals):
+def cold_to_hot_fuel(Fuel, Geometrical_Data, vars, h_vals):
 
     alpha = Fuel.Thermal_Expansion_Coeff
     T_0 = 25 + 273.15
@@ -275,7 +275,7 @@ def cold_to_hot_fuel (Fuel, Geometrical_Data, vars, h_vals):
 
     for h in h_vals:
 
-        T_hott = get_temperature_at_point(h, Geometrical_Data.fuel_outer_diameter/2, vars.T_map) 
+        T_hott = get_temperature_at_point(h, Geometrical_Data.fuel_outer_diameter/2, vars.T_map)
         T_hot.append(T_hott)
         R_initt = Geometrical_Data.fuel_outer_diameter/2
         R_init.append(R_initt)
@@ -284,8 +284,13 @@ def cold_to_hot_fuel (Fuel, Geometrical_Data, vars, h_vals):
     
     return R_hot, R_init, T_hot
 
-def cold_to_hot_clad (Cladding, Geometrical_Data, vars, h_vals):
-
+def cold_to_hot_clad (Cladding, Geometrical_Data, vars, h_vals, flag):
+    
+    if flag=='inner':
+        diam = Geometrical_Data.cladding_outer_diameter/2 - Geometrical_Data.thickness_cladding
+    elif flag=='outer':
+        diam = Geometrical_Data.cladding_outer_diameter/2
+        
     strain = []
     R_hot = []
     R_init = []
@@ -293,12 +298,15 @@ def cold_to_hot_clad (Cladding, Geometrical_Data, vars, h_vals):
 
     for h in h_vals:
 
-        T_hott = get_temperature_at_point(h, Geometrical_Data.cladding_outer_diameter/2, vars.T_map) 
+        T_hott = get_temperature_at_point(h, diam, vars.T_map) 
         T_hot.append(T_hott)
+        
         strainn = Cladding.Thermal_Expansion_Coeff(T_hott)
         strain.append(strainn)
-        R_initt = Geometrical_Data.cladding_outer_diameter/2
+        
+        R_initt = diam
         R_init.append(R_initt)
+        
         R_hott =R_initt * (1 + strainn)
         R_hot.append(R_hott)
     
