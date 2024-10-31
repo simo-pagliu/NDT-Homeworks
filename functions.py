@@ -312,19 +312,22 @@ R_void = sp.solvers.solve(R_fuel**2*density_TD-(R_columnar**2-R_void**2)*(densit
 
 return R_void
 
-def A_f(x,Pu_concentration):
-  A_value = A = 0.01926+ 1.06*10**-6*x + 2.63*10**-8*Pu_concentration
-  return A_value
+# Function to calculate A based on x and Pu_concentration
+def A_f(x, Pu_concentration):
+    A_value = 0.01926 + 1.06 * 10**-6 * x + 2.63 * 10**-8 * Pu_concentration
+    return A_value
 
+# Function to calculate B based on Pu_concentration
 def B_f(Pu_concentration):
- B_value = 2.39*10**-4 + 1.37*10**-13*Pu_concentration
- return B_value
+    B_value = 2.39 * 10**-4 + 1.37 * 10**-13 * Pu_concentration
+    return B_value
 
-
+# Function to calculate porosity based on density
 def porosity_f(density_value):
-  p = 1 - density_value #evaluation of porosity in different zones
-  return p
+    p = 1 - density_value  # porosity evaluation in different zones
+    return p
 
+# Definition of symbols
 T = sp.symbols('T')
 A = sp.symbols('A')
 B = sp.symbols('B')
@@ -333,33 +336,50 @@ E = sp.symbols('E')
 p = sp.symbols('p')
 k = sp.Function('k')(T)
 
-k_function = sp.Eq(k,1/(A+B*T) + (D/T**2) * sp.exp(-E/T) * (1 - p)**2.5)
-Equation_to_integrate = k_function.rhs  # equation to integrate, to evaluate the heat conductivity
+# Equation to integrate to obtain thermal conductivity
+k_function = sp.Eq(k, 1 / (A + B * T) + (D / T**2) * sp.exp(-E / T) * (1 - p)**2.5)
+Equation_to_integrate = k_function.rhs
 
-integral_k = sp.integrate(Equation_to_integrate, T)  # integral over temperature of conductivity coefficient
+# Symbolic integration
+integral_k = sp.integrate(Equation_to_integrate, T)
 
-density_TD = 11.31 #g/cm^3
-Fuel_density = 11.31*0.945 #density in furl before restructuring #using this value of density for the  zone 3
-equiaxed_density = 0.95*density_TD
-columnar_density = 0.98*density_TD
-DENSITY = [columnar_density,equiaxed_density,Fuel_density]
+# Initial data
+density_TD = 11.31  # g/cm^3
+Fuel_density = 11.31 * 0.945
+equiaxed_density = 0.95 * density_TD
+columnar_density = 0.98 * density_TD
+DENSITY = [columnar_density, equiaxed_density, Fuel_density]
 Pu_concentration = 0.29
 O_M = 1.957
-x = 2-O_M
-A_value = A_f(x,Pu_concentration)
+x = 2 - O_M
+A_value = A_f(x, Pu_concentration)
 B_value = B_f(Pu_concentration)
-D_value = 5.27*10**9
+D_value = 5.27 * 10**9
 E_value = 17109.5
 
-# Matrix creation for all k values
+# Matrix creation for integrated k values
 n = 1
-m = 3 
-matrix_of_integrals = sp.MutableDenseMatrix(n, m, [0]*n*m)  # Inizializza con zeri
+m = 3
+matrix_of_integrals = sp.MutableDenseMatrix(n, m, [0] * n * m)
 
+# Print symbolic integral of k(T)
 print("Symbolic integral of k(T) is:")
 sp.pprint(integral_k)
 
+# Calculation and substitution of values into matrix cells
+for i in range(m):
+    matrix_of_integrals[0, i] = integral_k.subs({
+        A: A_value,
+        B: B_value,
+        D: D_value,
+        E: E_value,
+        p: porosity_f(DENSITY[i])
+    })
 
-matrix_of_integrals[0,0] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[0])})
-matrix_of_integrals[0,1] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[1])})
-matrix_of_integrals[0,2] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[2])})
+# Print the matrix
+print(matrix_of_integrals)
+
+
+
+
+
