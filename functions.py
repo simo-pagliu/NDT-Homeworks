@@ -360,13 +360,14 @@ E_value = 17109.5
 # Matrix creation for integrated k values
 n = 1
 m = 3
-matrix_of_integrals = sp.MutableDenseMatrix(n, m, [0] * n * m)
+matrix_of_integrals = sp.MutableDenseMatrix(n, m, [0] * n * m) #matrix contains all the integral_k equation for each zones
 
 # Print symbolic integral of k(T)
 print("Symbolic integral of k(T) is:")
 sp.pprint(integral_k)
 
 # Calculation and substitution of values into matrix cells
+ 
 for i in range(m):
     matrix_of_integrals[0, i] = integral_k.subs({
         A: A_value,
