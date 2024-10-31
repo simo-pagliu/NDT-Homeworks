@@ -272,3 +272,17 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     h_idx = np.argmin(np.abs(h_values[:, 0] - h_requested))
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
+
+
+def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio.density_TD):
+#the main problem is the determination of equiaxed and columnar radius
+
+    R_void = sp.symbols('R_void')
+    R_void = sp.solvers.solve(R_fuel**2*density_TD-(R_columnar**2-R_void**2)*(density_columnar_ratio*density_TD)-(R_equiaxed**2-R_columnar**2)*(
+          density_equiaxed_ratio*density_TD)-(R_fuel**2-R_equiaxed**2)*(density_TD))[0]
+
+    return R_void
+
+
+
+
