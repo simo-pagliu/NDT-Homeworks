@@ -8,9 +8,9 @@ import dill
 from IPython.display import display, Math
 
 # Internal Libraries
-import functions_looping as f
+import dimensioning.functions as f
 import nuclei_func as nf
-from functions_looping import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
+from dimensioning.functions import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
 
 # %% LOAD DATA
 # Load all objects in a single line using dill
