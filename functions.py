@@ -48,11 +48,12 @@ class GeometryData:
 
 # Thermo Hydraulics Specs
 class ThermoHydraulicSpecs:
-    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, h_peak_factor, peak_factors, neutron_flux_peak):
+    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, uptime, h_peak_factor, peak_factors, neutron_flux_peak):
         self.coolant_inlet_temp = coolant_inlet_temp  # K
         self.coolant_inlet_pressure = coolant_inlet_pressure  # Pa
         self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
         self.q_linear_avg = q_linear_avg  # W/m
+        self.uptime = uptime  # s
         self.h_peak_factor = h_peak_factor  # W/m
         self.peak_factors = peak_factors
         self.neutron_flux_peak = neutron_flux_peak  # kg/s
@@ -199,7 +200,13 @@ def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_
     r_coolant_cladding = geom_data.cladding_outer_diameter / 2
     r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
     r_gap_fuel = geom_data.fuel_outer_diameter / 2
+    r_fuel_in = geom_data.fuel_inner_diameter / 2
 
+    # Index of the interfaces
+    idx_fuel = np.argmin(np.abs(r_plot - r_gap_fuel))
+    idx_gap = np.argmin(np.abs(r_plot - r_cladding_gap))
+
+    # Compute the temperature profile
     for j, r in enumerate(r_plot[1:], start=1): 
         dr = r_plot[j-1] - r_plot[j]
 
@@ -207,13 +214,16 @@ def radial_temperature_profile(Temp_0, power, r_plot, geom_data, Resistances, T_
         if r < r_gap_fuel:
             th_res = Resistances.Fuel(T_radial[j-1])
             # Compute the temperature
-            T_value = T_radial[j-1] + power * th_res * (dr / (r_gap_fuel - r_plot[-1]))
+            if r_fuel_in == 0:
+                T_value = T_radial[idx_fuel] + power * th_res * (1 - (r/r_gap_fuel)**2)
+            else:
+                T_value = T_radial[idx_fuel] + power * th_res * np.log(r_gap_fuel / r)
         
         # In the gap
         elif r < r_cladding_gap:
             th_res = Resistances.Gap(T_radial[j-1], T_fuel_out)
             # Compute the temperature
-            T_value = T_radial[j-1] + power * th_res * (dr / (r_cladding_gap - r_gap_fuel))
+            T_value = T_radial[idx_gap] + power * th_res * np.log(r_cladding_gap / r)
             
         # In the cladding
         elif r < r_coolant_cladding:
@@ -263,6 +273,17 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     h_idx = np.argmin(np.abs(h_values[:, 0] - h_requested))
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
+
+
+# def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio.density_TD):
+# #the main problem is the determination of equiaxed and columnar radius
+
+#     R_void = sp.symbols('R_void')
+#     R_void = sp.solvers.solve(R_fuel**2*density_TD-(R_columnar**2-R_void**2)*(density_columnar_ratio*density_TD)-(R_equiaxed**2-R_columnar**2)*(
+#           density_equiaxed_ratio*density_TD)-(R_fuel**2-R_equiaxed**2)*(density_TD))[0]
+
+#     return R_void
+
 
 def cold_to_hot_fuel(Fuel, Geometrical_Data, vars, h_vals):
 

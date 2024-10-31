@@ -68,3 +68,7 @@ Done (code-wise):
 - Temperature profile radially
 - Temperature profile axially
 - All axial temperature profiles
+
+Notes for the report:
+- When evaluating K we use a fixed value of Pu concentration as the correlation uses the average concentration and doesn't have any local physical meaning
+- Radiative heat transfer in the gap is ~ 14% of the total
