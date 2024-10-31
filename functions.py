@@ -302,3 +302,64 @@ def pellet_regions():
     
 
     return
+
+def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio.density_TD)
+#the main problem is the determination of equiaxed and columnar radius
+
+R_void = sp.symbols('R_void')
+R_void = sp.solvers.solve(R_fuel**2*density_TD-(R_columnar**2-R_void**2)*(density_columnar_ratio*density_TD)-(R_equiaxed**2-R_columnar**2)*(
+          density_equiaxed_ratio*density_TD)-(R_fuel**2-R_equiaxed**2)*(density_TD))[0]
+
+return R_void
+
+def A_f(x,Pu_concentration):
+  A_value = A = 0.01926+ 1.06*10**-6*x + 2.63*10**-8*Pu_concentration
+  return A_value
+
+def B_f(Pu_concentration):
+ B_value = 2.39*10**-4 + 1.37*10**-13*Pu_concentration
+ return B_value
+
+
+def porosity_f(density_value):
+  p = 1 - density_value #evaluation of porosity in different zones
+  return p
+
+T = sp.symbols('T')
+A = sp.symbols('A')
+B = sp.symbols('B')
+D = sp.symbols('D')
+E = sp.symbols('E')
+p = sp.symbols('p')
+k = sp.Function('k')(T)
+
+k_function = sp.Eq(k,1/(A+B*T) + (D/T**2) * sp.exp(-E/T) * (1 - p)**2.5)
+Equation_to_integrate = k_function.rhs  # equation to integrate, to evaluate the heat conductivity
+
+integral_k = sp.integrate(Equation_to_integrate, T)  # integral over temperature of conductivity coefficient
+
+density_TD = 11.31 #g/cm^3
+Fuel_density = 11.31*0.945 #density in furl before restructuring #using this value of density for the  zone 3
+equiaxed_density = 0.95*density_TD
+columnar_density = 0.98*density_TD
+DENSITY = [columnar_density,equiaxed_density,Fuel_density]
+Pu_concentration = 0.29
+O_M = 1.957
+x = 2-O_M
+A_value = A_f(x,Pu_concentration)
+B_value = B_f(Pu_concentration)
+D_value = 5.27*10**9
+E_value = 17109.5
+
+# Matrix creation for all k values
+n = 1
+m = 3 
+matrix_of_integrals = sp.MutableDenseMatrix(n, m, [0]*n*m)  # Inizializza con zeri
+
+print("Symbolic integral of k(T) is:")
+sp.pprint(integral_k)
+
+
+matrix_of_integrals[0,0] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[0])})
+matrix_of_integrals[0,1] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[1])})
+matrix_of_integrals[0,2] = integral_k.subs({A:A_value},{B:B_value},{D:D_value},{E:E_value},{p:porosity_f(DENSITY[2])})
