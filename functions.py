@@ -294,3 +294,11 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
         Volume_expansion_fission_gas.append(temp)
     return Volume_expansion_fission_gas
+
+##################################################
+# Central Void Formation
+##################################################
+def pellet_regions():
+    
+
+    return
