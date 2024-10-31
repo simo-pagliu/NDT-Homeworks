@@ -276,16 +276,29 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
 
+##################################################
+# Void Formation
+##################################################
+def void_swelling(T_map, geom_data, thermo_hyd_spec):
+    Volume_expansion_fission_gas = []
+    r_fuel = geom_data.fuel_outer_diameter / 2
+    idx_fuel = np.argmin(np.abs(T_map.r[0, :] - r_fuel))
+    r_vals = T_map.r[0, idx_fuel:-1]
+    
+    for h in T_map.h[:, 0]:
+        phi = power_profile(h, thermo_hyd_spec, value = 'neutron_flux') * thermo_hyd_spec.uptime
 
-# def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio.density_TD):
-# #the main problem is the determination of equiaxed and columnar radius
+        temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
+        temperature_avg = np.mean(temperature)
 
-#     R_void = sp.symbols('R_void')
-#     R_void = sp.solvers.solve(R_fuel**2*density_TD-(R_columnar**2-R_void**2)*(density_columnar_ratio*density_TD)-(R_equiaxed**2-R_columnar**2)*(
-#           density_equiaxed_ratio*density_TD)-(R_fuel**2-R_equiaxed**2)*(density_TD))[0]
+        temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
+        Volume_expansion_fission_gas.append(temp)
+    return Volume_expansion_fission_gas
 
-#     return R_void
+##################################################
+# Central Void Formation
+##################################################
+def pellet_regions():
+    
 
-
-
-
+    return
