@@ -2,7 +2,7 @@ import dill
 import math
 import nuclei_func as nf
 import numpy as np
-from functions import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
+from funs import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
 # Material: Cladding
 # 15-15, Ti stabilized, cold worked stainless steel
 Cladding_Proprieties = Material_Proprieties(
@@ -75,7 +75,7 @@ Geometrical_Data = GeometryData(
     cladding_outer_diameter=6.55 * 1e-3,  # m - GIVEN
     thickness_cladding=0.3 * 1e-3, # m
     pin_pitch=8.275 * 1e-3,  # m
-    h_values = np.linspace(0, 0.85, 1000), # m
+    h_values = np.linspace(0, 0.85, 10), # m
     fuel_pellet_height = 7e-3, # m
     fuel_roughness = 2e-6, # m
     cladding_roughness = 1e-6 # m

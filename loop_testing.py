@@ -8,9 +8,8 @@ import dill
 from IPython.display import display, Math
 
 # Internal Libraries
-import dimensioning.functions as f
-import nuclei_func as nf
-from dimensioning.functions import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
+import funs as f
+from funs import DimensioningData
 
 # %% LOAD DATA
 # Load all objects in a single line using dill
@@ -43,6 +42,27 @@ T_map = f.temperature_map(Coolant_Proprieties, Cladding_Proprieties, Helium_Prop
 toc = time.time()
 print(f"Elapsed time: {toc - tic} s")
 
+# %% Loop over cladding thicknesses
+cladding_thicknesses = np.linspace(565e-6, 1e-6, 6)
+plt.figure()
+
+for delta in cladding_thicknesses:
+    Geometrical_Data.thickness_cladding = delta
+    print(f"Cladding Thickness: {Geometrical_Data.thickness_cladding*1e3:.2f} mm")
+    T_map = f.temperature_map(Coolant_Proprieties, Cladding_Proprieties, Helium_Proprieties, Fuel_Proprieties, \
+                                    ThermoHydraulics, Geometrical_Data, T_fuel_out, Burnup)
+    T_this = T_map.T[5, :]
+    plt.plot(T_map.r[5, :], T_this, '--', label=f"Cladding Thickness: {delta*1e3:.2f} mm")
+
+# Set title and axis labels
+plt.title('Temperature Profile')
+plt.xlabel('Radius [mm]')
+plt.ylabel('Temperature [K]')
+# Add legend to the plot
+plt.legend()
+# Show the figure
+plt.show()
+
 # %% 3D Plot Temperature Map
 fig = go.Figure(data=[go.Surface(z=T_map.T, x=T_map.r*1e3, y=T_map.h*1e3, colorscale='Thermal')])
 
@@ -60,4 +80,4 @@ fig.update_layout(
 )
 
 # Show the plot
-fig.show()
+# fig.show()
