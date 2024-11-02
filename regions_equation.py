@@ -32,7 +32,7 @@ def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_co
     k = sp.Function('k')(T)
 
     # Equation to integrate to obtain thermal conductivity
-    k_function = sp.Eq(k, 1 / (A + B * T) + (D / T**2) * sp.exp(-E / T) * (1 - p)**2.5)
+    k_function = sp.Eq(k,1.755+(((1 / (A + B * T) + (D / T**2) * sp.exp(-E / T) * (1 - p)**2.5))-1.755)*sp.exp(-Burnup/128.75))
     Equation_to_integrate = k_function.rhs
 
     # Symbolic integration
