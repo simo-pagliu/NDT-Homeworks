@@ -53,7 +53,7 @@ class ThermoHydraulicSpecs:
         self.coolant_inlet_pressure = coolant_inlet_pressure  # Pa
         self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
         self.q_linear_avg = q_linear_avg  # W/m
-        self.uptime = uptime
+        self.uptime = uptime  # s
         self.h_peak_factor = h_peak_factor  # W/m
         self.peak_factors = peak_factors
         self.neutron_flux_peak = neutron_flux_peak  # kg/s
@@ -275,7 +275,6 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     h_idx = np.argmin(np.abs(h_values[:, 0] - h_requested))
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
-
 ##################################################
 # Void Formation
 ##################################################
@@ -294,3 +293,55 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
         Volume_expansion_fission_gas.append(temp)
     return Volume_expansion_fission_gas
+
+
+##################################################
+# Thermal Expansion
+##################################################
+def cold_to_hot_fuel(Fuel, Geometrical_Data, vars, h_vals):
+
+    alpha = Fuel.Thermal_Expansion_Coeff
+    T_0 = 25 + 273.15
+
+    R_hot = []
+    R_init = []
+    T_hot= []
+
+    for h in h_vals:
+
+        T_hott = get_temperature_at_point(h, Geometrical_Data.fuel_outer_diameter/2, vars.T_map)
+        T_hot.append(T_hott)
+        R_initt = Geometrical_Data.fuel_outer_diameter/2
+        R_init.append(R_initt)
+        R_hott =R_initt * (1 + alpha * (T_hott - T_0))
+        R_hot.append(R_hott)
+    
+    return R_hot, R_init, T_hot
+
+def cold_to_hot_clad (Cladding, Geometrical_Data, vars, h_vals, flag):
+    
+    if flag=='inner':
+        diam = Geometrical_Data.cladding_outer_diameter/2 - Geometrical_Data.thickness_cladding
+    elif flag=='outer':
+        diam = Geometrical_Data.cladding_outer_diameter/2
+        
+    strain = []
+    R_hot = []
+    R_init = []
+    T_hot= []
+
+    for h in h_vals:
+
+        T_hott = get_temperature_at_point(h, diam, vars.T_map) 
+        T_hot.append(T_hott)
+        
+        strainn = Cladding.Thermal_Expansion_Coeff(T_hott)
+        strain.append(strainn)
+        
+        R_initt = diam
+        R_init.append(R_initt)
+        
+        R_hott =R_initt * (1 + strainn)
+        R_hot.append(R_hott)
+    
+    return R_hot, R_init, T_hot
