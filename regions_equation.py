@@ -2,7 +2,7 @@ import sympy as sp
 import numpy as np
 from scipy.optimize import fsolve
 
-def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio.density_TD):
+def void_geometry(R_fuel,R_equiaxed,R_columnar,density_equiaxed_ratio,density_columnar_ratio, density_TD):
     #the main problem is the determination of equiaxed and columnar radius
 
     R_void = sp.symbols('R_void')
@@ -37,7 +37,7 @@ T = sp.symbols('T')
 A = sp.symbols('A')
 B = sp.symbols('B')
 D = sp.symbols('D')
-E = sp.symbols('E')
+E = sp.symbols('E', positive=True)
 p = sp.symbols('p')
 k = sp.Function('k')(T)
 
@@ -61,7 +61,7 @@ fuel_density = 11.31 * 0.945 * 1000  # kg/m^3 (theoretical density in g/cm^3 * p
 uptime = 360 * 24 * 3600  # s (operating time in seconds)
 q_linear_avg = 38.7e3  # W/m (average linear power)
 # Temperatures
-T3 = 1000  # maximum temperature at the outer fuel radius
+T3 = 1400  # maximum temperature at the outer fuel radius
 T2 = 1600 + 273  # temperature at the equiaxed radius
 T1 = 1800 + 273  # temperature at the columnar radius
 
