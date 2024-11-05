@@ -149,7 +149,7 @@ def system(variables):
     return [eq1, eq2, eq3]
 
 # Initial values for variables
-initial_values = [0.1, 0.3, 0.4]   #unica problema sta qui con i valori iniziali, che tipicamente sono quelli che poi stampa a terminale come risultato
+initial_values = [0.17, 0.35, 0.47]   #unica problema sta qui con i valori iniziali, che tipicamente sono quelli che poi stampa a terminale come risultato
 
 # Solving the system of equations
 numerical_solutions = fsolve(system, initial_values)
