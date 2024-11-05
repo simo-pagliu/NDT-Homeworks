@@ -60,6 +60,10 @@ fuel_height = 0.85  # m (total fuel height)
 fuel_density = 11.31 * 0.945 * 1000  # kg/m^3 (theoretical density in g/cm^3 * percentage of theoretical density * conversion to kg/m^3)
 uptime = 360 * 24 * 3600  # s (operating time in seconds)
 q_linear_avg = 38.7e3  # W/m (average linear power)
+# Temperatures
+T3 = 1000  # maximum temperature at the outer fuel radius
+T2 = 1600 + 273  # temperature at the equiaxed radius
+T1 = 1800 + 273  # temperature at the columnar radius
 
 Burnup = bu_function(fuel_outer_diameter, fuel_height, fuel_density, uptime, q_linear_avg)
 
@@ -105,11 +109,6 @@ k3_end = matrix_of_integrals[0, 0].subs({T: T2})
 k2_start = matrix_of_integrals[0, 1].subs({T: T2})
 k2_end = matrix_of_integrals[0, 1].subs({T: T1})
 integral_k_numeric = sp.lambdify(T, matrix_of_integrals, 'numpy')
-
-# Temperatures
-T3 = 1000  # maximum temperature at the outer fuel radius
-T2 = 1600 + 273  # temperature at the equiaxed radius
-T1 = 1800 + 273  # temperature at the columnar radius
 
 # Calculate numerical values for k3_start, k3_end, k2_start, k2_end
 k3_start = integral_k_numeric(T3)[0, 0]
