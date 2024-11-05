@@ -123,7 +123,7 @@ print("k2_start:", k2_start)
 print("k2_end:", k2_end)
 
 # System of equations
-R_fuel = 0.542
+R_fuel = 0.542/2
 q_first_avg = q_linear_avg
 print(f'the value of q linear is{q_first_avg}')
 
