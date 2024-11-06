@@ -44,8 +44,8 @@ class GeometryData:
         self.pin_pitch = pin_pitch # m
         self.h_values = h_values  # m
         self.fuel_pellet_height = fuel_pellet_height  # m
-        self.nominal_size = (cladding_outer_diameter - fuel_outer_diameter)/2 - thickness_cladding
-        self.effective_gap_size = self.nominal_size + fuel_roughness + cladding_roughness
+        self.nominal_size = [(cladding_outer_diameter - fuel_outer_diameter)/2 - thickness_cladding for cladding_outer_diameter, fuel_outer_diameter, thickness_cladding in zip(cladding_outer_diameter, fuel_outer_diameter, thickness_cladding)]
+        self.effective_gap_size = [nominal_size + fuel_roughness + cladding_roughness for nominal_size in self.nominal_size]
 
 
 # Thermo Hydraulics Specs
@@ -78,32 +78,58 @@ class DimensioningData:
 ##################################################
 # Radial values
 ##################################################
-def calculate_r_values(Geometrical_Data):
-    r_coolant_infinity = Geometrical_Data.cladding_outer_diameter / 2 + Geometrical_Data.pin_pitch / np.sqrt(3)
-    r_coolant_cladding = Geometrical_Data.cladding_outer_diameter / 2
-    r_cladding_gap = Geometrical_Data.cladding_outer_diameter / 2 - Geometrical_Data.thickness_cladding
-    r_gap_fuel = Geometrical_Data.fuel_outer_diameter / 2
-    r_end = Geometrical_Data.fuel_inner_diameter / 2
+def create_meshgrid(geom_data):
+    num_steps = len(geom_data.cladding_outer_diameter)
+    r_values_list = []
 
-    r_coolant = np.linspace(r_coolant_infinity, r_coolant_cladding, 2)[0:-1]
-    r_cladding = np.linspace(r_coolant_cladding, r_cladding_gap, 2)[0:-1]
-    r_gap = np.linspace(r_cladding_gap, r_gap_fuel, 5)[0:-1]
-    r_fuel = np.linspace(r_gap_fuel, r_end, 25)
+    for i in range(num_steps):
+        # Extract the corresponding values for this height
+        cladding_outer_radius = geom_data.cladding_outer_diameter[i] / 2
+        pin_pitch = geom_data.pin_pitch
+        thickness_cladding = geom_data.thickness_cladding[i]
+        fuel_outer_radius = geom_data.fuel_outer_diameter[i] / 2
+        fuel_inner_radius = geom_data.fuel_inner_diameter[i] / 2
 
-    return np.concatenate((r_coolant, r_cladding, r_gap, r_fuel))
+        # Calculate r_values for this specific height
+        r_coolant_infinity = 10e-3 # 10 mm
+        r_cladding_gap = cladding_outer_radius - thickness_cladding
 
+        r_coolant = np.array([r_coolant_infinity])
+        r_cladding = np.array([cladding_outer_radius])
+        r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, 20, endpoint=False)
+        r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 25)
+
+        # Concatenate all r_values for this height
+        r_values_at_height = np.concatenate((r_coolant, r_cladding, r_gap, r_fuel))
+        r_values_list.append(r_values_at_height)
+
+    # Find the maximum length of r_values to pad all lists to the same length
+    max_r_length = max(len(r_values) for r_values in r_values_list)
+    r_values_list_padded = [np.pad(r_values, (0, max_r_length - len(r_values)), constant_values=np.nan) for r_values in r_values_list]
+
+    # Convert to a numpy array (each row corresponds to r_values at a specific height)
+    r_values_array = np.array(r_values_list_padded)
+    h_values = geom_data.h_values
+
+    # Create the meshgrid: X represents radius, Y represents height
+    Y, X = np.meshgrid(h_values, np.arange(r_values_array.shape[1]), indexing='ij')
+
+    # Replace X values with the corresponding r_values from r_values_array
+    X = r_values_array
+
+    return X, Y
 ##################################################
 # Hydraulic Flow
 ##################################################
 # Function to calculate the hydraulic flow parameters
-def hydraulic_flow(thermo_hyd_spec, geom_data, coolant, temperature):
-    passage_area = (1/2 * (geom_data.pin_pitch ** 2) * np.sin(np.pi/3)) - (1/2 * np.pi * (geom_data.cladding_outer_diameter/2)**2)
+def hydraulic_flow(thermo_hyd_spec, geom_data, coolant, temperature, i_h):
+    passage_area = (1/2 * (geom_data.pin_pitch ** 2) * np.sin(np.pi/3)) - (1/2 * np.pi * (geom_data.cladding_outer_diameter[i_h]/2)**2)
 
     # Calculate the velocity of the fluid
     velocity = thermo_hyd_spec.coolant_mass_flow_rate / (coolant.Density(temperature) * passage_area)
 
     # Calculate the hydraulic diameter
-    wetted_perimeter = np.pi * geom_data.cladding_outer_diameter / 2
+    wetted_perimeter = np.pi * geom_data.cladding_outer_diameter[i_h] / 2
 
     hydraulic_diameter = (4 * passage_area) / (wetted_perimeter)
 
@@ -112,14 +138,14 @@ def hydraulic_flow(thermo_hyd_spec, geom_data, coolant, temperature):
 ##################################################
 # Coolant Thermohydraulics
 ##################################################
-def coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, temperature):
+def coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, temperature, i_h):
     density = coolant.Density(temperature)
     viscosity = coolant.Viscosity(temperature)
     thermal_conductivity = coolant.Thermal_Conductivity(temperature)
     c_p = coolant.Specific_Heat(temperature)
 
     # Calculate the velocity and passage area
-    velocity, _, d_h = hydraulic_flow(thermo_hyd_spec, geom_data, coolant, temperature)
+    velocity, _, d_h = hydraulic_flow(thermo_hyd_spec, geom_data, coolant, temperature, i_h)
 
     # Adimensional numbers
     reynolds = (density * velocity * d_h) / viscosity
@@ -131,7 +157,7 @@ def coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, temperature):
     htc = nusselt * thermal_conductivity / d_h
 
     # Calculate the thermal resistance
-    radius_cladding_out = geom_data.cladding_outer_diameter / 2
+    radius_cladding_out = geom_data.cladding_outer_diameter[i_h] / 2
     thermal_resistance = 1 / (2 * np.pi * radius_cladding_out * htc)
 
     return thermal_resistance, velocity
@@ -163,18 +189,18 @@ def power_profile(h, thermo_hyd_spec, value = 'power'):
 ##################################################
 # Thermal Resistances
 ##################################################
-def thermal_resistance_cladding(geom_data, cladding, temperature):
-    radius_cladding_out = geom_data.cladding_outer_diameter / 2
-    radius_cladding_in = radius_cladding_out - geom_data.thickness_cladding
+def thermal_resistance_cladding(geom_data, cladding, temperature, i_h):
+    radius_cladding_out = geom_data.cladding_outer_diameter[i_h] / 2
+    radius_cladding_in = radius_cladding_out - geom_data.thickness_cladding[i_h]
     k = cladding.Thermal_Conductivity(temperature)
     thermal_resistance = np.log(radius_cladding_out / radius_cladding_in) / (2 * np.pi * k)
     return thermal_resistance
 
-def thermal_resistance_gap(geom_data, helium, fuel, cladding, t_gas, t_fuel_out):
-    radius_gap_in = geom_data.fuel_outer_diameter / 2
+def thermal_resistance_gap(geom_data, helium, fuel, cladding, t_gas, t_fuel_out, i_h):
+    radius_gap_in = geom_data.fuel_outer_diameter[i_h] / 2
 
     # Conductive heat transfer
-    conduction = helium.Thermal_Conductivity(t_gas) / geom_data.effective_gap_size
+    conduction = helium.Thermal_Conductivity(t_gas) / geom_data.effective_gap_size[i_h]
 
     # Radiative heat transfer
     radiation = 4 * 5.67e-8 * (t_fuel_out**3) / (1/(fuel.Emissivity) + 1/(cladding.Emissivity) - 1)
@@ -208,21 +234,23 @@ def thermal_resistance_fuel(Burnup, fuel, temperature):
 ##################################################
 def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_fuel_out, Burnup):
     h_values = geom_data.h_values
-    r_values = calculate_r_values(geom_data)
+    # r_values = calculate_r_values(geom_data)
 
     # Compute the height of each slice
     dz = h_values[1] - h_values[0]
     
-
     # Create the meshgrid
-    X, Y = np.meshgrid(r_values, h_values)
+    X, Y = create_meshgrid(geom_data)
     Z = []
     
     # Initialize the temperature
     Temp_coolant = thermo_hyd_spec.coolant_inlet_temp
 
     # Compute the temperature profile for each height step
-    for h in h_values: 
+    for i_h, h in enumerate(h_values): 
+        # Get radii
+        r_values = X[i_h, :]
+
         # Compute temperature of the coolant
         f = 1/2
         c_p = coolant.Specific_Heat(Temp_coolant)
@@ -236,10 +264,10 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
         T_radial = [Temp_coolant] # Temperature of the coolant (ideally at r = infinity)
 
         # Create Limits
-        r_coolant_cladding = geom_data.cladding_outer_diameter / 2
-        r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
-        r_gap_fuel = geom_data.fuel_outer_diameter / 2
-        r_fuel_in = geom_data.fuel_inner_diameter / 2
+        r_coolant_cladding = geom_data.cladding_outer_diameter[i_h] / 2
+        r_cladding_gap = geom_data.cladding_outer_diameter[i_h] / 2 - geom_data.thickness_cladding[i_h]
+        r_gap_fuel = geom_data.fuel_outer_diameter[i_h] / 2
+        r_fuel_in = geom_data.fuel_inner_diameter[i_h] / 2
 
         # Index of the interfaces
         idx_fuel = np.argmin(np.abs(r_values - r_gap_fuel))
@@ -262,21 +290,21 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
             # In the gap
             elif r < r_cladding_gap:
                 # Thermal resistance of the gap
-                th_res = thermal_resistance_gap(geom_data, gap, fuel, cladding, T_radial[j-1], T_fuel_out)
+                th_res = thermal_resistance_gap(geom_data, gap, fuel, cladding, T_radial[j-1], T_fuel_out, i_h)
                 # Compute the temperature
                 T_value = T_radial[idx_gap] + power * th_res * np.log(r_cladding_gap / r)
                 
             # In the cladding
             elif r < r_coolant_cladding:
                 # Thermal resistance of the cladding
-                th_res = thermal_resistance_cladding(geom_data, cladding, T_radial[j-1])
+                th_res = thermal_resistance_cladding(geom_data, cladding, T_radial[j-1], i_h)
                 # Compute the temperature
                 T_value = T_radial[j-1] + power * th_res * (dr / (r_coolant_cladding - r_cladding_gap))
                 
             # In the coolant
             else:
                 # Thermal resistance of the coolant
-                th_res, _ = coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, T_radial[0])
+                th_res, _ = coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, T_radial[0], i_h)
                 # Compute the temperature
                 T_value = T_radial[j-1] + power * th_res * (dr / (r_values[0] - r_coolant_cladding))
 
@@ -315,3 +343,60 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
         Volume_expansion_fission_gas.append(temp)
     return Volume_expansion_fission_gas
+
+##################################################
+# Thermal Expansion
+##################################################
+def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map):
+    # Initialize
+    h_vals = cold_geometrical_data.h_values
+    
+    #### Fuel ####
+    # Initialize
+    fuel_inner_hot = []
+    fuel_outer_hot = []
+    # Reference Temperatrue
+    T_0 = 25 + 273.15
+    # Calculate for fuel
+    fuel_alpha = fuel.Thermal_Expansion_Coeff
+
+    # Compute along the height
+    for i_h, h in enumerate(h_vals):
+        # Starting values
+        fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
+        fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
+        # Compute along the radius
+        for r in [fuel_inner, fuel_outer]:
+            T_now = get_temperature_at_point(h, r, T_map)
+            Expanded_Radius = r * (1 + fuel_alpha * (T_now - T_0))
+            if r == fuel_inner:
+                fuel_inner_hot.append(2*Expanded_Radius)
+            else:
+                fuel_outer_hot.append(2*Expanded_Radius)
+
+    #### Cladding ####
+    # Initialize
+    thickness_cladding = []
+    cladding_outer_hot = []
+    # Expansion coefficient
+    cladding_alpha = cladding.Thermal_Expansion_Coeff
+
+    # Compute along the height
+    for i_h, h in enumerate(h_vals):
+        # Starting values
+        cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
+        cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
+        # Compute along the radius
+        for r in [cladding_outer_radius, cladding_inner_radius]:
+            T_now = get_temperature_at_point(h, r, T_map)
+            strain = cladding_alpha(T_now)
+            Expanded_Radius = r * (1 + strain)
+            if r == cladding_outer_radius:
+                # Outer radius computation
+                cladding_outer_hot.append(2*Expanded_Radius)
+            else:
+                # Inner radius computation
+                thickness = cladding_outer_hot[i_h]/2 - Expanded_Radius
+                thickness_cladding.append(thickness)
+
+    return fuel_outer_hot, fuel_inner_hot, cladding_outer_hot, thickness_cladding
