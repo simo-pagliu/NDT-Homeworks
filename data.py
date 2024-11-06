@@ -49,7 +49,7 @@ Coolant_Proprieties = Material_Proprieties(
     Elements=["Na"],
     Qualities=[1],
     Density=lambda t: 954.1579 + ((t-273) * 9/5 +32) *( ((t-273) * 9/5 +32) * ((((t-273) * 9/5 +32) * 0.9667e-9 - 0.46e-5)) - 0.1273534),  # kg/m^3 (t * 9/5 +32) is the convertion from C to K to F
-    Viscosity=lambda t: (math.exp(813.9 / t -2.530 ))/1000,  # Pa s
+    Viscosity=lambda t: (np.exp(813.9 / t -2.530 ))/1000,  # Pa s
     Thermal_Conductivity=lambda t: 110 - 0.0648 * t + 1.16e-5 * t**2,  # W/m K
     Specific_Heat=lambda t: 1608 - 0.7481 * t + 3.929e-4 * t**2,  # J/kg K
     
@@ -68,14 +68,14 @@ Helium_Proprieties = Material_Proprieties(
     Thermal_Expansion_Coeff=3.66e-3  # Approximate value for helium in 1/°C
 )
 
-
+len_h = 10
 Geometrical_Data = GeometryData(
-    fuel_outer_diameter=5.42 * 1e-3,  # m - GIVEN
-    fuel_inner_diameter=0.00 * 1e-3,  # m
-    cladding_outer_diameter=6.55 * 1e-3,  # m - GIVEN
-    thickness_cladding=0.3 * 1e-3, # m
+    fuel_outer_diameter=[5.42 * 1e-3]*len_h,  # m - GIVEN
+    fuel_inner_diameter=[0.00 * 1e-3]*len_h,  # m
+    cladding_outer_diameter=[6.55 * 1e-3]*len_h,  # m - GIVEN
+    thickness_cladding=[0.3 * 1e-3]*len_h, # m
     pin_pitch=8.275 * 1e-3,  # m
-    h_values = np.linspace(0, 0.85, 10), # m
+    h_values = np.linspace(0, 0.85, len_h), # m
     fuel_pellet_height = 7e-3, # m
     fuel_roughness = 2e-6, # m
     cladding_roughness = 1e-6 # m
