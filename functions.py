@@ -281,17 +281,21 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
 ##################################################
 def void_swelling(T_map, geom_data, thermo_hyd_spec):
     Volume_expansion_fission_gas = []
-    r_fuel = geom_data.fuel_outer_diameter / 2
-    idx_fuel = np.argmin(np.abs(T_map.r[0, :] - r_fuel))
-    r_vals = T_map.r[0, idx_fuel:-1]
+    r_coolant_cladding = geom_data.cladding_outer_diameter / 2
+    r_cladding_gap = geom_data.cladding_outer_diameter / 2 - geom_data.thickness_cladding
+    idx_start = np.argmin(np.abs(T_map.r[0, :] - r_coolant_cladding))
+    idx_end = np.argmin(np.abs(T_map.r[0, :] - r_cladding_gap))
+    r_vals = T_map.r[0, idx_start:idx_end]
     
-    for h in T_map.h[:, 0]:
+    for h_idx, h in enumerate(T_map.h[:, 0]):
         phi = power_profile(h, thermo_hyd_spec, value = 'neutron_flux') * thermo_hyd_spec.uptime
 
         temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
         temperature_avg = np.mean(temperature)
 
         temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
+        if temp < 0:
+            temp = 0
         Volume_expansion_fission_gas.append(temp)
     return Volume_expansion_fission_gas
 
