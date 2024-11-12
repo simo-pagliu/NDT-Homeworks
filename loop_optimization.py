@@ -466,9 +466,6 @@ def initialize_params():
     Returns:
         dict: Dictionary containing initialized parameters.
     """
-    # Run data.py to generate the data_file.dill
-    subprocess.run(["python", "data.py"])
-
     # Load all objects in a single line using dill
     with open("data_file.dill", "rb") as file:
         data_objects = dill.load(file)
@@ -581,7 +578,6 @@ def main(params):
         while residual > 1e-3:
             j += 1
             Geometrical_Data = reset_geometrical_data(params, delta)
-            print(f"Cladding Thickness: {Geometrical_Data.thickness_cladding[0]*1e3:.2f} mm - Iteration {j}", end='\r')
 
             r_cladding_gap = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding)
             r_gap_fuel = np.array(Geometrical_Data.fuel_outer_diameter) / 2
@@ -610,4 +606,5 @@ def main(params):
 
 if __name__ == "__main__":
     params = initialize_params()
+    print("Parameters initialized.")
     main(params)
