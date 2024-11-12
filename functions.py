@@ -268,6 +268,9 @@ def temperature_profile_3D(r_values, Resistances, coolant, thermo_hyd_spec, geom
     T_map = Temperature_Map(X, Y, Z)
     return T_map
 
+##################################################
+# Search Functions
+##################################################
 def get_temperature_at_point(h_requested, r_requested,T_map):
     h_values = T_map.h
     r_values = T_map.r
@@ -275,6 +278,15 @@ def get_temperature_at_point(h_requested, r_requested,T_map):
     h_idx = np.argmin(np.abs(h_values[:, 0] - h_requested))
     r_idx = np.argmin(np.abs(r_values[0, :] - r_requested))
     return T_values[h_idx, r_idx]
+
+def get_radius_at_temperature(T_requested,T_map):
+    r_values = []
+    T_values = T_map.T
+    for t,r in zip(T_values,T_map.r):
+        T_idx = np.argmin(np.abs(t - T_requested))
+        r_values.append(r[T_idx])
+    
+    return r_values
 
 ##################################################
 # Void Formation
@@ -299,7 +311,19 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         Volume_expansion_fission_gas.append(temp)
     return Volume_expansion_fission_gas
 
-
+def get_R_void(Fuel_Properties, R_col, R_eq):
+        
+    R_void = []
+    density_af = Fuel_Properties.Density
+    density_columnar=Fuel_Properties.Theoretical_Density*0.98
+    density_equiaxed= Fuel_Properties.Theoretical_Density*0.95
+    
+    for r in range(len(R_col)):
+        
+        R_voidd = np.sqrt(R_col[r]**2 - R_eq[r]**2*(density_af/density_columnar) +(R_eq[r]**2 - R_col[r]**2)*(density_equiaxed/density_af))
+        R_void.append(R_voidd)
+        
+    return R_void
 ##################################################
 # Thermal Expansion
 ##################################################
