@@ -107,7 +107,7 @@ def create_meshgrid(geom_data):
         r_coolant = np.array([r_coolant_infinity])
         r_cladding = np.array([cladding_outer_radius])
         r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, 20, endpoint=False)
-        r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 25)
+        r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 100)
 
         # Concatenate all r_values for this height
         r_values_at_height = np.concatenate((r_coolant, r_cladding, r_gap, r_fuel))
@@ -547,6 +547,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup):
     R_equiaxied = get_radius_at_temperature(1600, T_map)
     R_columnar = get_radius_at_temperature(1800, T_map)
     R_void = get_R_void(params["Fuel_Proprieties"], R_columnar, R_equiaxied)
+    print("average void radius:", np.mean(R_void))
     Geometrical_Data.fuel_inner_diameter = [2 * r for r in R_void]
     Geometrical_Data.fuel_outer_diameter, \
     Geometrical_Data.fuel_inner_diameter, \
