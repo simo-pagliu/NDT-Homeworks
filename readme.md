@@ -1,44 +1,33 @@
 # Current plan:
 1) Code all known laws and correlations  
 2) Program all functions and test them indipendently with guess values for unkown
-3) Investigation on gap thickness and cladding thickness optimum (2 variable optimization)
-4) Investigation on plenum height requirments (1 variable optimization, depends on the previous!)
-5) Possibly proper numerical optimization by restricting the domain from previous investigations 
+3) Investigation on gap thickness and  plenum height requirments (2 variable optimization)
 
 # Progress Tracking:
 To Fix:
-- Proper thermal laws for gap and fuel
+- 
 
 To Find data on:
-- Fuel roughness --> DONE, code it
-- Cladding roughness --> DONE, code it
-- Fuel Emissivity --> DONE, write it down properly below
-- Cladding Emissivity --> DONE, write it down properly below
-
-To Find data on (not now):
 - Cladding hardness (only if we have to consider contact between fuel and cladding)
   
-To Do (functions):
-- Thermal expansion function: Input: Geometry_Data & T_map --> Output: Geometry_Data
-- Pu redistribution: does it needs to be calculated by itself?
-- Central void formation function: Input: Geometry_Data & T_map --> Output: Geometry_Data
+To Do (Physical Functions):
+- Fission Gas Production
+- Pu redistribution
 - Stress computations: ???
   
-To Do (code):
-For each evaluation of the gap & cladding size we have to Loop for:
-- T_fuel_out in gap HTC
-- Thermal expansion & Void (hot geom)
+To Do (Iterative Implementation):
+- Fission Gas Production
+- Void Swelling
 
-To Do (considerations):
+To Do (Considerations):
 - What can we neglect?
 
 To Do ("side quests"):
-- Reformat of function arguments by "classifing" free variables
 - Code optimization
 - Code commenting
 
 To Test (code-wise):
-- Power Profile
+- 
 
 To Validate (physical result wise):
 - Coolant Velociy
@@ -68,7 +57,14 @@ Done (code-wise):
 - Temperature profile radially
 - Temperature profile axially
 - All axial temperature profiles
+- Radial profile
+- Fuel Restructuring
+- Thermal Expansion
+- Void Formation
+- Void Swelling
 
 Notes for the report:
 - When evaluating K we use a fixed value of Pu concentration as the correlation uses the average concentration and doesn't have any local physical meaning
-- Radiative heat transfer in the gap is ~ 14% of the total
+- Radiative heat transfer in the gap is ~ 14% of the total so we preferred not to neglect it
+- For the restructuring densities we got data from the handouts so we don't have any other source to confirm that
+- For all the non-validated quantities we simply cross-checked reults with handouts and other groups to see if the orders of magnitude where reasonable (which means no external source for those either)
