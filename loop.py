@@ -706,9 +706,11 @@ def main(params):
     Burnup = compute_burnup(params)
     print("Burnup:", Burnup)
 
+    ############################################################################
     # VARIABLES TO OPTIMIZE
     cladding_thicknesses = [50e-6] #np.linspace(565e-6, 1e-6, 6)
     h_plenum = 1.8 # m
+    ############################################################################
 
     # Initial values
     T_fuel_out = 1160  # K (Initial guess)
