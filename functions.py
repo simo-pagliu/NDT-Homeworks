@@ -374,3 +374,120 @@ def cold_to_hot_clad (Cladding, Geometrical_Data, vars, h_vals, flag):
         R_hot.append(R_hott)
     
     return R_hot, R_init, T_hot
+
+##################################################
+# Fission Gas Release
+##################################################
+# Size of bubble radius
+a = 10e-6  # m
+
+# Starting gas temperature
+T_gas = 20 + 273 # °C --> K
+
+# Initial gas pressure
+p_gas = 1e5  # Pa
+
+# Fission cross sections (see file "Useful Data.xlsx")
+sigma_235 = 1.047756375  # barn
+sigma_238 = 0.55801001  # barn
+sigma_pu = 1.689844625  # barn
+
+# Fission yield
+fission_yield = 0.3
+
+# Diffusivity evaluation parameters [Matzke, 1980]
+d_0 = 5e-8  # m^2/s
+q = 40262
+
+import nuclei_func as nf
+def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometrical_Data, T_map):
+    """
+    Function to compute the rate theory fission gas calculations and generate relevant plots.
+    Outputs:
+        He_percentage: Percentage of helium present inside the fuel still trapped in
+        new_p_gas: Gas pressure in the plenum
+    """
+    # Calculate molar mass
+    molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities)  # g/mol
+
+    # Calculate macroscopic cross sections
+    macro_235 = nf.macro(sigma_235, Fuel_Proprieties.Density, molar_mass)  # cm^-1
+    macro_238 = nf.macro(sigma_238, Fuel_Proprieties.Density, molar_mass)  # cm^-1
+    macro_pu = nf.macro(sigma_pu, Fuel_Proprieties.Density, molar_mass)  # cm^-1
+
+    fission_xs = nf.mixture([macro_235, macro_238, 0, macro_pu], Fuel_Proprieties.Qualities)  # cm^-1
+
+    # Compute average neutron flux
+    # power profile
+    q_values = [power_profile(h, ThermoHydraulics) for h in Geometrical_Data.h_values]
+    peak_to_average_ratio = max(q_values) / ThermoHydraulics.q_linear_avg
+    average_neutron_flux = ThermoHydraulics.neutron_flux_peak / peak_to_average_ratio
+
+    # Calculate average fission rate
+    avg_fission_rate = average_neutron_flux * fission_xs * 1e6  # [fissions/m^3 s]
+
+    # Diffusivity function
+    diffusivity = lambda temperature: d_0 * np.exp(-q / temperature)  # m^2/s
+
+    # Compute the average maximum fuel temperature
+    points = [0.425, 0, 0.850]
+    fuel_inner_diameter_avg = np.mean(Geometrical_Data.fuel_inner_diameter)
+    temperature_max_average_fuel = sum(
+        get_temperature_at_point(point, fuel_inner_diameter_avg / 2, T_map)
+        for point in points
+    ) / len(points)
+
+    diffusivity_coeff = diffusivity(temperature_max_average_fuel)  # m^2/s
+
+    # Define P as a lambda function based on the given solution
+    P_lambda = lambda t: fission_yield * avg_fission_rate * t
+
+    # Define GM as a lambda function based on the given solution
+    GM_lambda = lambda r: (-fission_yield * avg_fission_rate * r**2 / (4 * diffusivity_coeff)) + (2.5e-11 * fission_yield * avg_fission_rate / diffusivity_coeff)
+
+    ### Integrate the solution for GM in the radial direction using numerical method
+    r_vals = np.linspace(0, a, 1000)  # Create a range of radius values
+    GM_vals = [GM_lambda(r) for r in r_vals]  # Evaluate GM_lambda at each radius value
+    GM_final = np.trapz(GM_vals, r_vals)  # Numerically integrate using trapezoidal rule
+
+    ## Compute the amount of gas released in plenum after 1 year
+
+    # Production of fission gas in the fuel
+    time = 360 * 24 * 3600  # 1 year (of operation) in seconds
+    total_fission_gas = P_lambda(time)  # Total amount of fission gas produced
+
+    # Total amount of fission gas inside the grains
+    n_grains_pellet = 1e5  # Number of grains in a pellet
+    n_pellets_pin = round(850e-3 / Geometrical_Data.fuel_pellet_height)  # Number of pellets in a pin
+    total_fission_gas_grains = GM_final * n_grains_pellet * n_pellets_pin
+
+    # Total amount of fission gas released in the plenum
+    total_fission_gas_released = total_fission_gas - total_fission_gas_grains
+
+    # Calculate the percentage of helium trapped inside the fuel
+    He_percentage = (total_fission_gas_grains / total_fission_gas) * 100
+
+    # Vector of possible plenum heights
+    fuel_column_height = 850e-3  # m
+
+    # Corresponding volume to accommodate gases
+    r_cladding_gap = np.mean(np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding))
+    r_gap_fuel = np.mean(np.array(Geometrical_Data.fuel_outer_diameter) / 2)
+    
+    V_plenum = (np.pi * r_cladding_gap**2 * h_plenum) + (np.pi * (r_cladding_gap**2 - r_gap_fuel**2) * fuel_column_height)
+
+    # Find initial quantity of He present in the plenum
+    initial_moles_he = p_gas * V_plenum / (8.314 * (T_gas))  # moles
+
+    # Find the additional moles of fission gases released in the plenum
+    fuel_outer_diameter_avg = np.mean(Geometrical_Data.fuel_outer_diameter)
+    V_pin = np.pi * (fuel_outer_diameter_avg / 2)**2 * fuel_column_height  # m^3
+    additional_moles_fg = (total_fission_gas_released * V_pin) / 6.022e23  # moles
+
+    # Find the total moles of gases in the plenum
+    total_moles_gas = initial_moles_he + additional_moles_fg  # moles
+
+    # Find the new pressure in the plenum
+    new_p_gas = total_moles_gas * 8.314 * (T_gas) / V_plenum  # Pa
+
+    return He_percentage, new_p_gas
