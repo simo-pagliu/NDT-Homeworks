@@ -63,7 +63,7 @@ Helium_Proprieties = Material_Proprieties(
     Elements=["He"],
     Qualities=[1],
     Density=0.1786,  # kg/m^3 at STP
-    Thermal_Conductivity=lambda t: 15.8e-4 * t**0.79,  # W/m K
+    Thermal_Conductivity=lambda t, x: (15.8e-4 * t**0.79)**x * (0.935e-4 * t**0.79)**(1-x),  # W/m K
     Specific_Heat=5193,  # J/kg K at constant pressure
     Thermal_Expansion_Coeff=3.66e-3  # Approximate value for helium in 1/°C
 )
