@@ -15,7 +15,7 @@ import copy
 # Classes
 ##################################################
 class Material_Proprieties:
-    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Emissivity ='', Molar_Mass='', Micro_Fission='', Micro_Absorption='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter=''):
+    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Emissivity ='', Molar_Mass='', Micro_Fission='', Fission_Yield='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter=''):
         self.Elements = Elements
         self.Qualities = Qualities
         self.Theoretical_Density = Theoretical_Density
@@ -27,7 +27,7 @@ class Material_Proprieties:
             self.Density = Density
         self.Molar_Mass = Molar_Mass
         self.Micro_Fission = Micro_Fission
-        self.Micro_Absorption = Micro_Absorption
+        self.Fission_Yield = Fission_Yield
         self.Viscosity = Viscosity
         self.Thermal_Conductivity = Thermal_Conductivity
         self.Specific_Heat = Specific_Heat
@@ -46,7 +46,9 @@ class Material_Proprieties:
         
 # Geometry Data
 class GeometryData:
-    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness):
+    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness, Initial_Gas_Pressure, Initial_Gas_Temperature):
+        self.Initial_Gas_Pressure = Initial_Gas_Pressure  # Pa
+        self.Initial_Gas_Temperature = Initial_Gas_Temperature
         self.fuel_outer_diameter = fuel_outer_diameter  # m
         self.fuel_inner_diameter = fuel_inner_diameter  # m (0 if solid fuel pellet)
         self.cladding_outer_diameter = cladding_outer_diameter  # m
@@ -495,7 +497,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     macro_238 = nf.macro(sigma_238, Fuel_Proprieties.Density, molar_mass)  # cm^-1
     macro_pu = nf.macro(sigma_pu, Fuel_Proprieties.Density, molar_mass)  # cm^-1
 
-    fission_xs = nf.mixture([macro_235, macro_238, 0, macro_pu], Fuel_Proprieties.Qualities)  # cm^-1
+    fission_xs = nf.mixture([macro_235, macro_238, 0, macro_pu], Fuel_Proprieties.Qualities, normalization_cond='normalize')  # cm^-1
 
     # Compute average neutron flux
     # power profile
@@ -613,11 +615,11 @@ def compute_burnup(params):
 
     MOX_volume = np.pi * (Geometrical_Data_Cold.fuel_outer_diameter[0]/2)**2 * Geometrical_Data_Cold.h_values[-1]
     MOX_mass = MOX_volume * Fuel_Proprieties.Density * 1000
-    MOX_molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities) * 1e-3  # g/mol --> kg/mol
+    MOX_molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities, normalization_cond='normalize') * 1e-3  # g/mol --> kg/mol
     MOX_mols = MOX_mass / MOX_molar_mass
     HM_molar_mass = [Fuel_Proprieties.Molar_Mass[i] for i in [0, 1, 3]]
     HM_qualities = [Fuel_Proprieties.Qualities[i] for i in [0, 1, 3]]
-    HM_molar_mass = nf.mixture(HM_molar_mass, HM_qualities) * 1e-3 # g/mol --> kg/mol
+    HM_molar_mass = nf.mixture(HM_molar_mass, HM_qualities, normalization_cond='normalize') * 1e-3 # g/mol --> kg/mol
     HM_mass = MOX_mols * HM_molar_mass  # kg of Heavy Metal
 
     Burnup = ThermoHydraulics.uptime / (24 * 3600) \

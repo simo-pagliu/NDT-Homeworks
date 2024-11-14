@@ -28,8 +28,10 @@ Cladding_Proprieties = Material_Proprieties(
 mol_qual = nf.w2mol([0.711, 0.29], [235 + 2*16, 239 + 2*16])  # UO2, PuO2
 
 Fuel_Proprieties = Material_Proprieties(
+    Fission_Yield=0.3,
     Elements=["U-235", "U-238", "O-16", "Pu"],
     Qualities=[mol_qual[0] * (1 - mol_qual[1]), (1 - mol_qual[0]) * (1 - mol_qual[1]), 2, mol_qual[1]], # Molar fractions
+    Micro_Fission = [1.047756375, 0.55801001, 0, 1.689844625],  # barn
     Theoretical_Density=11.31, # g/cm^3
     Percent_of_Theoretical_Density = 94.5, # %
     Molar_Mass=[235.0439299, 238.05078826, 15.99491461956, 244.064204],  # g/mol
@@ -70,6 +72,8 @@ Helium_Proprieties = Material_Proprieties(
 
 len_h = 10
 Geometrical_Data = GeometryData(
+    Initial_Gas_Temperature=20 + 273,  # K
+    Initial_Gas_Pressure=1e5,  # Pa
     fuel_outer_diameter=[5.42 * 1e-3]*len_h,  # m - GIVEN
     fuel_inner_diameter=[0.00 * 1e-3]*len_h,  # m
     cladding_outer_diameter=[6.55 * 1e-3]*len_h,  # m - GIVEN
