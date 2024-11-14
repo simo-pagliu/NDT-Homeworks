@@ -51,7 +51,9 @@ class Material_Proprieties:
         
 # Geometry Data
 class GeometryData:
-    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
+    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness, Initial_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
+        self.Initial_Gas_Temperature = Initial_Gas_Temperature
+        self.Initial_Gas_Pressure = Initial_Gas_Pressure
         self.fuel_outer_diameter = fuel_outer_diameter  # m
         self.fuel_inner_diameter = fuel_inner_diameter  # m (0 if solid fuel pellet)
         self.cladding_outer_diameter = cladding_outer_diameter  # m

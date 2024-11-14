@@ -2,7 +2,7 @@ import dill
 import math
 import nuclei_func as nf
 import numpy as np
-from loop_optimization import Material_Proprieties, ThermoHydraulicSpecs, GeometryData
+from loop import Material_Proprieties, ThermoHydraulicSpecs, GeometryData
 # Material: Cladding
 # 15-15, Ti stabilized, cold worked stainless steel
 Cladding_Proprieties = Material_Proprieties(
