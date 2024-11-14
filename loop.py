@@ -682,7 +682,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     # Void Swelling
     void_swell = void_swelling(previous_T_map, Geometrical_Data, params["ThermoHydraulics"])
     radius_before = [d/ 2 for d in Geometrical_Data.fuel_outer_diameter]
-    radius_swelled = [radius_before * np.sqrt(1 + swell) for radius_before, swell in zip(radius_before, void_swell)]
+    radius_swelled = [radius_before * (1 + 1/3 * swell/100) for radius_before, swell in zip(radius_before, void_swell)]
     Geometrical_Data.fuel_outer_diameter = [2 * r for r in radius_swelled]
 
     # Fission Gas Production
