@@ -4,10 +4,9 @@
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import plotly.graph_objects as go
-import math
 import dill
-from IPython.display import display, Math
 import nuclei_func as nf
 import subprocess
 import copy
@@ -15,7 +14,7 @@ import copy
 # Classes
 ##################################################
 class Material_Proprieties:
-    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Emissivity ='', Molar_Mass='', Micro_Fission='', Fission_Yield='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter=''):
+    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Emissivity ='', Molar_Mass='', Micro_Fission='', Micro_Absorption='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter='', Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.Elements = Elements
         self.Qualities = Qualities
         self.Theoretical_Density = Theoretical_Density
@@ -27,7 +26,7 @@ class Material_Proprieties:
             self.Density = Density
         self.Molar_Mass = Molar_Mass
         self.Micro_Fission = Micro_Fission
-        self.Fission_Yield = Fission_Yield
+        self.Micro_Absorption = Micro_Absorption
         self.Viscosity = Viscosity
         self.Thermal_Conductivity = Thermal_Conductivity
         self.Specific_Heat = Specific_Heat
@@ -40,15 +39,19 @@ class Material_Proprieties:
         self.Poissons_Ratio = Poissons_Ratio
         self.Yield_Stress = Yield_Stress
         self.Ultimate_Tensile_Strength = Ultimate_Tensile_Strength
+        self.Starting_Gas_Temperature = Starting_Gas_Temperature
+        self.Initial_Gas_Pressure = Initial_Gas_Pressure
+        self.Sigma_235 = Sigma_235
+        self.Sigma_238 = Sigma_238
+        self.Sigma_Pu = Sigma_Pu
+        self.Fission_Yield = Fission_Yield
         self.Nusselt_Number = Nusselt_Number
         self.Grain_diameter = Grain_diameter
 
         
 # Geometry Data
 class GeometryData:
-    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness, Initial_Gas_Pressure, Initial_Gas_Temperature):
-        self.Initial_Gas_Pressure = Initial_Gas_Pressure  # Pa
-        self.Initial_Gas_Temperature = Initial_Gas_Temperature
+    def __init__(self, fuel_outer_diameter, fuel_inner_diameter, cladding_outer_diameter, thickness_cladding, pin_pitch, h_values, fuel_pellet_height, fuel_roughness, cladding_roughness, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.fuel_outer_diameter = fuel_outer_diameter  # m
         self.fuel_inner_diameter = fuel_inner_diameter  # m (0 if solid fuel pellet)
         self.cladding_outer_diameter = cladding_outer_diameter  # m
@@ -62,7 +65,7 @@ class GeometryData:
 
 # Thermo Hydraulics Specs
 class ThermoHydraulicSpecs:
-    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, uptime, h_peak_factor, peak_factors, neutron_flux_peak):
+    def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, uptime, h_peak_factor, peak_factors, neutron_flux_peak, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.coolant_inlet_temp = coolant_inlet_temp  # K
         self.coolant_inlet_pressure = coolant_inlet_pressure  # Pa
         self.coolant_mass_flow_rate = coolant_mass_flow_rate  # kg/s
@@ -75,14 +78,14 @@ class ThermoHydraulicSpecs:
 
 # Define temperature map
 class Temperature_Map:
-    def __init__(self, X, Y, Z):
+    def __init__(self, X, Y, Z, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.r = X
         self.h = Y
         self.T = Z
         
 # Define the class for Dimensioning Data
 class DimensioningData:
-    def __init__(self, filling_gas_pressure, filling_gas_temperature, temperature_map):
+    def __init__(self, filling_gas_pressure, filling_gas_temperature, temperature_map, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.p_gas = filling_gas_pressure  # Pa
         self.T_gas = filling_gas_temperature  # °C
         self.T_map = temperature_map
@@ -483,6 +486,9 @@ d_0 = 5e-8  # m^2/s
 q = 40262
 
 def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometrical_Data, T_map):
+    bubble_radius = 10e-6  # m
+    d_0 = 5e-8  # m^2/s
+    q = 40262
     """
     Function to compute the rate theory fission gas calculations and generate relevant plots.
     Outputs:
@@ -735,17 +741,67 @@ def main(params):
         iterations_gap.append(T_map)
         iterations_plenum.append(Gas_Pressure)
 
-    plt.figure()
-    for T_map, delta, Gas_p in zip(iterations_gap, cladding_thicknesses, iterations_plenum):
-        plt.plot(T_map.r[0, :], T_map.T[0, :], label=f"{delta*1e3:.2f} mm ---> Gap at {Gas_p*1e-6:.2f} MPa", marker='o')
-    plt.axvline(x=Geometrical_Data.fuel_outer_diameter[0]/2, color='r', linestyle='--', label='Fuel Outer Diameter')
-    plt.axvline(x=Geometrical_Data.fuel_inner_diameter[0]/2, color='g', linestyle='--', label='Fuel Inner Diameter')
-    plt.axvline(x=Geometrical_Data.cladding_outer_diameter[0]/2, color='b', linestyle='--', label='Cladding Outer Diameter')
-    plt.axvline(x=Geometrical_Data.cladding_outer_diameter[0]/2 - Geometrical_Data.thickness_cladding[0], color='y', linestyle='--', label='Cladding Inner Diameter')
-    plt.title("Temperature Profile")
-    plt.xlabel("Radius [m]")
-    plt.ylabel("Temperature [K]")
-    plt.legend()
+    # Set up the figure and axis
+    fig, ax = plt.subplots()
+    ax.set_xlabel("Radius [m]")
+    ax.set_ylabel("Temperature [K]")
+
+    # Initialize lines and shadow container
+    line, = ax.plot([], [], marker='o')
+    shadow_lines = []
+
+    # Initialize vertical lines and legend
+    fuel_outer_line = ax.axvline(x=0, color='r', linestyle='--', label='Fuel Outer Diameter')
+    fuel_inner_line = ax.axvline(x=0, color='g', linestyle='--', label='Fuel Inner Diameter')
+    cladding_outer_line = ax.axvline(x=0, color='b', linestyle='--', label='Cladding Outer Diameter')
+    cladding_inner_line = ax.axvline(x=0, color='y', linestyle='--', label='Cladding Inner Diameter')
+    ax.legend()
+
+    # Set limits for clarity
+    ax.set_xlim(0, max(Geometrical_Data.cladding_outer_diameter) / 2 + 3e-3)
+    ax.set_ylim(min(T_map.T.ravel()), max(T_map.T.ravel()) + 100)
+
+    # Update function for each frame in the animation
+    def update(frame):
+        # Clear previous shadows if they exist
+        for shadow in shadow_lines:
+            shadow.remove()
+        shadow_lines.clear()
+
+        # Current height and profiles
+        height = T_map.h[frame] if T_map.h.ndim == 1 else T_map.h[frame, 0]
+        radius_profile = T_map.r[frame, :]
+        temperature_profile = T_map.T[frame, :]
+
+        # Update title with current height
+        ax.set_title(f"Temperature Profile at Height: {height:.2f} m")
+
+        # Plot main line
+        line.set_data(radius_profile, temperature_profile)
+
+        # Update vertical line positions
+        fuel_outer_line.set_xdata(Geometrical_Data.fuel_outer_diameter[frame] / 2)
+        fuel_inner_line.set_xdata(Geometrical_Data.fuel_inner_diameter[frame] / 2)
+        cladding_outer_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2)
+        cladding_inner_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2 - Geometrical_Data.thickness_cladding[frame])
+
+        # Create shadow effect with trailing profiles
+        num_trails = 5  # Number of trailing lines
+        for i in range(1, num_trails + 1):
+            trail_frame = max(0, frame - i)
+            trail_opacity = 1 - (i / (num_trails + 1))
+            shadow, = ax.plot(T_map.r[trail_frame, :], T_map.T[trail_frame, :], color='blue', alpha=trail_opacity, linestyle='--')
+            shadow_lines.append(shadow)
+
+        return line, fuel_outer_line, fuel_inner_line, cladding_outer_line, cladding_inner_line, *shadow_lines
+
+    # Create the animation with blit disabled
+    ani = animation.FuncAnimation(fig, update, frames=len(T_map.h), blit=False, repeat=True, interval=100, repeat_delay=1000)
+
+    # Save as GIF
+    # ani.save("temperature_profile.gif", writer='pillow', fps=3)  # Adjust fps as needed
+
+    # Show plot (optional if you only want to save)
     plt.show()
 
 
