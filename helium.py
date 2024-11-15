@@ -19,6 +19,7 @@ sigma_f_Fe = 0.23e-24    # fast for Fe
 sigma_f_Cr = 0.20e-24    # fast for Cr
 
 # Helium production rate (arbitrary units, based on neutron flux and material properties)
+helium_production_rate = 1e-10  # atoms/cm^3/s
 
 # Initial concentrations (arbitrary units)
 Ni58_initial = 1.0
