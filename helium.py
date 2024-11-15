@@ -91,8 +91,3 @@ plt.title("Helium Concentration Over Time at Each Node")
 plt.show()
 
 # Helium embrittlement might influence plenum design and cladding thickness.
-# A new variable He is added for each node, representing 
-# helium concentration in the cladding. The rate of change of He is proportional to the neutron flux at each node, 
-# assuming that helium builds up due to neutron interactions.Impact on Cladding Properties: Although not included 
-# here directly, you could model the impact of helium on cladding thickness or mechanical properties by introducing 
-# a function that adjusts these properties based on He concentration.
