@@ -9,7 +9,7 @@ DURATION_SECONDS = DURATION_DAYS * SECONDS_PER_DAY
 
 # Neutron flux parameters
 peak_neutron_flux_fast = 6.1e15  # n/cm^2/s
-peak_factors = np.array([0.572, 0.737, 0.868, 0.958, 1, 0.983, 0.912, 0.802, 0.658, 0.498])
+peak_factors = np.array([0.572, 0.737, 0.868, 0.958, 0.983, 0.912, 0.802, 0.658, 0.498, 0.400])
 
 # Neutron capture cross-sections (in cm^2)
 sigma_th_Ni58 = 4.4e-24  # thermal for Ni-58
@@ -18,11 +18,14 @@ sigma_f_Ni59 = 1.3e-24   # fast for Ni-59
 sigma_f_Fe = 0.23e-24    # fast for Fe
 sigma_f_Cr = 0.20e-24    # fast for Cr
 
+# Helium production rate (arbitrary units, based on neutron flux and material properties)
+
 # Initial concentrations (arbitrary units)
 Ni58_initial = 1.0
 Ni59_initial = 0.0
 Fe_initial = 1.0
 Cr_initial = 1.0
+He_initial = 0.0  # initial helium concentration in cladding
 
 # Define the system of differential equations
 def isotopic_changes(t, y):
@@ -30,6 +33,7 @@ def isotopic_changes(t, y):
     dNi59_dt = np.zeros(10)
     dFe_dt = np.zeros(10)
     dCr_dt = np.zeros(10)
+    dHe_dt = np.zeros(10)  # helium concentration in cladding
 
     for i in range(10):
         # Neutron flux at each node
@@ -40,21 +44,26 @@ def isotopic_changes(t, y):
         Ni59 = y[i + 10]
         Fe = y[i + 20]
         Cr = y[i + 30]
+        He = y[i + 40]  # helium concentration
 
-        # Differential equations
+        # Differential equations for isotopes
         dNi58_dt[i] = -sigma_th_Ni58 * phi_fast * Ni58 - sigma_f_Ni58 * phi_fast * Ni58
         dNi59_dt[i] = sigma_th_Ni58 * phi_fast * Ni58 - sigma_f_Ni59 * phi_fast * Ni59
         dFe_dt[i] = -sigma_f_Fe * phi_fast * Fe
         dCr_dt[i] = -sigma_f_Cr * phi_fast * Cr
 
-    return np.concatenate((dNi58_dt, dNi59_dt, dFe_dt, dCr_dt))
+        # Helium production based on neutron flux and materials (simplified model)
+        dHe_dt[i] = helium_production_rate * phi_fast  # proportional to neutron flux
+
+    return np.concatenate((dNi58_dt, dNi59_dt, dFe_dt, dCr_dt, dHe_dt))
 
 # Initial conditions vector
 initial_conditions = np.concatenate((
     Ni58_initial * np.ones(10),
     Ni59_initial * np.ones(10),
     Fe_initial * np.ones(10),
-    Cr_initial * np.ones(10)
+    Cr_initial * np.ones(10),
+    He_initial * np.ones(10)
 ))
 
 # Solve the differential equations
@@ -68,15 +77,21 @@ solution = solve_ivp(
 
 # Plotting the results
 time_days = solution.t / SECONDS_PER_DAY
+
+# Plot helium concentration over time for each node
+plt.figure(figsize=(10, 6))
 for i in range(10):
-    plt.plot(time_days, solution.y[i], label=f'Ni-58 Node {i+1}')
-    plt.plot(time_days, solution.y[i+10], label=f'Ni-59 Node {i+1}')
-    plt.plot(time_days, solution.y[i+20], label=f'Fe Node {i+1}')
-    plt.plot(time_days, solution.y[i+30], label=f'Cr Node {i+1}')
+    plt.plot(time_days, solution.y[i+40], label=f'He Node {i+1}')
 
 plt.xlabel("Time (days)")
-plt.ylabel("Concentration")
+plt.ylabel("Helium Concentration (arbitrary units)")
 plt.legend(loc="upper right", bbox_to_anchor=(1.2, 1))
-plt.title("Isotopic Concentrations Over Time at Each Node")
+plt.title("Helium Concentration Over Time at Each Node")
 plt.show()
 
+# Helium embrittlement might influence plenum design and cladding thickness.
+# A new variable He is added for each node, representing 
+# helium concentration in the cladding. The rate of change of He is proportional to the neutron flux at each node, 
+# assuming that helium builds up due to neutron interactions.Impact on Cladding Properties: Although not included 
+# here directly, you could model the impact of helium on cladding thickness or mechanical properties by introducing 
+# a function that adjusts these properties based on He concentration.
