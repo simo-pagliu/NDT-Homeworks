@@ -14,7 +14,7 @@ import copy
 # Classes
 ##################################################
 class Material_Proprieties:
-    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Emissivity ='', Molar_Mass='', Micro_Fission='', Micro_Absorption='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter='', Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
+    def __init__(self, Elements='', Qualities='', Density='',Theoretical_Density='',Percent_of_Theoretical_Density='', Porosity_Columnar='', Porosity_Equiaxed='', Emissivity ='', Molar_Mass='', Micro_Fission='', Micro_Absorption='', Viscosity='', Thermal_Conductivity='', Specific_Heat='', Thermal_Expansion_Coeff='', Melting_Temperature='', Boiling_Temperature='',Oxigen_to_metal_ratio='', Youngs_Modulus='', Poissons_Ratio='', Yield_Stress='', Ultimate_Tensile_Strength='', Nusselt_Number='', Grain_diameter='', Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
         self.Elements = Elements
         self.Qualities = Qualities
         self.Theoretical_Density = Theoretical_Density
@@ -24,6 +24,8 @@ class Material_Proprieties:
             self.Porosity = (self.Theoretical_Density - self.Density) / self.Density
         else:
             self.Density = Density
+        self.Porosity_Colummar = Porosity_Columnar
+        self.Porosity_Equiaxed = Porosity_Equiaxed
         self.Molar_Mass = Molar_Mass
         self.Micro_Fission = Micro_Fission
         self.Micro_Absorption = Micro_Absorption
@@ -238,9 +240,9 @@ def thermal_resistance_fuel(Burnup, fuel, temperature):
     
     # Accounts for fuel regions due to restructuring
     if temperature > 1800:
-        Porosity = 0.00
+        Porosity = fuel.Porosity_Colummar
     elif temperature > 1600:
-        Porosity = 0.02
+        Porosity = fuel.Porosity_Equiaxed
     else:
         Porosity = fuel.Porosity
         
@@ -396,8 +398,8 @@ def get_R_void(Fuel_Proprieties, R_col, R_eq):
         
     R_void = []
     density_af = Fuel_Proprieties.Density
-    density_columnar=Fuel_Proprieties.Theoretical_Density*0.98
-    density_equiaxed= Fuel_Proprieties.Theoretical_Density*0.95
+    density_columnar=Fuel_Proprieties.Theoretical_Density * (1 - Fuel_Proprieties.Porosity_Columnar)
+    density_equiaxed= Fuel_Proprieties.Theoretical_Density * (1 - Fuel_Proprieties.Porosity_Equiaxed)
     
     for r in range(len(R_col)):
         
