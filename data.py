@@ -11,7 +11,7 @@ Cladding_Proprieties = Material_Proprieties(
     Density=lambda eth: 7900 * (1 + eth)**-3,  # kg/m^3
     Thermal_Conductivity=lambda t: 13.95 + 0.01163 * t,  # W/m K
     Emissivity = 0.32, # -
-    Thermal_Expansion_Coeff=lambda t: -3.101e-4 + 1.545e-5 * t + 2.75e-9 * t**2,  # 1/°C
+    Thermal_Expansion_Coeff=lambda t: -3.101e-4 + 1.545e-5 * (t-273.15) + 2.75e-9 * (t-273.15)**2,  # 1/°C --> 1/K
     Specific_Heat=500,  # Approximate value in J/kg K for steel
     Melting_Temperature=1673,  # K
     
@@ -34,6 +34,8 @@ Fuel_Proprieties = Material_Proprieties(
     Micro_Fission = [1.047756375, 0.55801001, 0, 1.689844625],  # barn
     Theoretical_Density=11.31, # g/cm^3
     Percent_of_Theoretical_Density = 94.5, # %
+    Porosity_Columnar = 0.02,
+    Porosity_Equiaxed = 0.04,
     Molar_Mass=[235.0439299, 238.05078826, 15.99491461956, 244.064204],  # g/mol
     Thermal_Conductivity=lambda k_inf, beta: 1.755 + (k_inf - 1.755) * math.exp(-beta),  # W/m K
     Emissivity = 0.79, # -
