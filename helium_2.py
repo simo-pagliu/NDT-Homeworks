@@ -63,97 +63,112 @@ t_eval = np.linspace(t_0, t_f, 1000)
 
 # Neutron flux data
 peak_flux = 6.1e15  # n/cm²/s at the peak node
-thermal_flux = 0.8 * peak_flux  # Assumed fraction of thermal flux
-fast_flux = 0.2 * peak_flux  # Assumed fraction of fast flux
+per_term_flux = 0
+thermal_flux = per_term_flux* peak_flux  # Assumed fraction of thermal flux
+node_numbers = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+peak_factors = np.array([0.572, 0.737, 0.868, 0.958, 1, 0.983, 0.912, 0.802, 0.658, 0.498])
+flux_values = (1 - per_term_flux)* peak_flux * peak_factors  # Flux for each node
 
-# Bateman system of equations with helium contributions
-def Bateman_sys_with_He_contrib(t, state):
-    N_Fe, N_Cr, N_58Ni, N_59Ni, N_extraNi, N_B10, N_He, He_Fe, He_Cr, He_Ni_fast, He_Ni_therm, He_B10 = state
-    
-    # Reaction rates
-    dN_58Ni_dt = -cross_sections["Ni58_fast"] * fast_flux * N_58Ni
-    dN_59Ni_dt = (
-        cross_sections["Ni58_fast"] * fast_flux * N_58Ni
-        - cross_sections["Ni59_thermal"] * thermal_flux * N_59Ni
+tot_at_He = 0
+fuel_column_height = 0.850 #m
+r_out_fuel = 0.00542 #m
+volume_fuel_column = np.pi* (r_out_fuel/ 2) ** 2 * fuel_column_height # m³
+
+for fast_flux in flux_values:
+    # Bateman system of equations with helium contributions
+    def Bateman_sys_with_He_contrib(t, state):
+        N_Fe, N_Cr, N_58Ni, N_59Ni, N_extraNi, N_B10, N_He, He_Fe, He_Cr, He_Ni_fast, He_Ni_therm, He_B10 = state
+        
+        # Reaction rates
+        dN_58Ni_dt = -cross_sections["Ni58_fast"] * fast_flux * N_58Ni
+        dN_59Ni_dt = (
+            cross_sections["Ni58_fast"] * fast_flux * N_58Ni
+            - cross_sections["Ni59_thermal"] * thermal_flux * N_59Ni
+        )
+        dN_extraNi_dt = -cross_sections["Ni58_fast"] * fast_flux * N_extraNi
+        dN_Fe_dt = -cross_sections["Fe_fast"] * fast_flux * N_Fe
+        dN_Cr_dt = -cross_sections["Cr_fast"] * fast_flux * N_Cr
+        dN_B10_dt = -(
+            cross_sections["B10_thermal"] * thermal_flux
+            + cross_sections["B10_fast"] * fast_flux
+        ) * N_B10
+        
+        # Helium production contributions
+        dHe_Fe = cross_sections["Fe_fast"] * fast_flux * N_Fe
+        dHe_Cr = cross_sections["Cr_fast"] * fast_flux * N_Cr
+        dHe_Ni_fast = cross_sections["Ni58_fast"] * fast_flux * (N_58Ni + N_59Ni + N_extraNi)
+        dHe_Ni_therm = cross_sections["Ni59_thermal"] * thermal_flux * N_59Ni
+        dHe_B10 = (
+            cross_sections["B10_thermal"] * thermal_flux * N_B10
+            + cross_sections["B10_fast"] * fast_flux * N_B10
+        )
+        dN_He_dt = dHe_Fe + dHe_Cr + dHe_Ni_fast + dHe_Ni_therm + dHe_B10
+        
+        # Combine rates
+        return [
+            dN_Fe_dt,
+            dN_Cr_dt,
+            dN_58Ni_dt,
+            dN_59Ni_dt,
+            dN_extraNi_dt,
+            dN_B10_dt,
+            dN_He_dt,
+            dHe_Fe,
+            dHe_Cr,
+            dHe_Ni_fast,
+            dHe_Ni_therm,
+            dHe_B10,
+        ]
+
+    # Solve the system
+    sol_extended = solve_ivp(
+        Bateman_sys_with_He_contrib,
+        t_span,
+        N_0_extended,
+        t_eval=t_eval,
+        method="RK45",
     )
-    dN_extraNi_dt = -cross_sections["Ni58_fast"] * fast_flux * N_extraNi
-    dN_Fe_dt = -cross_sections["Fe_fast"] * fast_flux * N_Fe
-    dN_Cr_dt = -cross_sections["Cr_fast"] * fast_flux * N_Cr
-    dN_B10_dt = -(
-        cross_sections["B10_thermal"] * thermal_flux
-        + cross_sections["B10_fast"] * fast_flux
-    ) * N_B10
-    
-    # Helium production contributions
-    dHe_Fe = cross_sections["Fe_fast"] * fast_flux * N_Fe
-    dHe_Cr = cross_sections["Cr_fast"] * fast_flux * N_Cr
-    dHe_Ni_fast = cross_sections["Ni58_fast"] * fast_flux * (N_58Ni + N_59Ni + N_extraNi)
-    dHe_Ni_therm = cross_sections["Ni59_thermal"] * thermal_flux * N_59Ni
-    dHe_B10 = (
-        cross_sections["B10_thermal"] * thermal_flux * N_B10
-        + cross_sections["B10_fast"] * fast_flux * N_B10
-    )
-    dN_He_dt = dHe_Fe + dHe_Cr + dHe_Ni_fast + dHe_Ni_therm + dHe_B10
-    
-    # Combine rates
-    return [
-        dN_Fe_dt,
-        dN_Cr_dt,
-        dN_58Ni_dt,
-        dN_59Ni_dt,
-        dN_extraNi_dt,
-        dN_B10_dt,
-        dN_He_dt,
-        dHe_Fe,
-        dHe_Cr,
-        dHe_Ni_fast,
-        dHe_Ni_therm,
-        dHe_B10,
-    ]
 
-# Solve the system
-sol_extended = solve_ivp(
-    Bateman_sys_with_He_contrib,
-    t_span,
-    N_0_extended,
-    t_eval=t_eval,
-    method="RK45",
-)
+    # Labels and colors for the plots
+    labels = ["[Fe]", "[Cr]", "[Ni-58]", "[Ni-59]", "[Ni-extra]", "[B-10]", "[He]"]
+    colors = ["c", "b", "g", "y", "k", "m", "r"]
 
-# Labels and colors for the plots
-labels = ["[Fe]", "[Cr]", "[Ni-58]", "[Ni-59]", "[Ni-extra]", "[B-10]", "[He]"]
-colors = ["c", "b", "g", "y", "k", "m", "r"]
+    # # Plot atomic concentrations over time
+    # for i, label in enumerate(labels):
+    #     plt.figure(figsize=(8, 5))
+    #     plt.plot(sol_extended.t / (24 * 3600), sol_extended.y[i], color=colors[i], label=label)
+    #     plt.title(f"Atomic Concentration Over Time: {label}")
+    #     plt.ylabel("Concentration (atoms m⁻³)")
+    #     plt.xlabel("Time (days)")
+    #     plt.legend(loc="best")
+    #     ax = plt.gca()
+    #     ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2e"))
+    #     plt.grid()
+    #     plt.show()
 
-# Plot atomic concentrations over time
-for i, label in enumerate(labels):
-    plt.figure(figsize=(8, 5))
-    plt.plot(sol_extended.t / (24 * 3600), sol_extended.y[i], color=colors[i], label=label)
-    plt.title(f"Atomic Concentration Over Time: {label}")
-    plt.ylabel("Concentration (atoms m⁻³)")
+    # Extract helium contributions
+    He_contrib_Fe = sol_extended.y[7]
+    He_contrib_Cr = sol_extended.y[8]
+    He_contrib_Ni_fast = sol_extended.y[9]
+    He_contrib_Ni_therm = sol_extended.y[10]
+    He_contrib_B10 = sol_extended.y[11]
+
+    # Plot helium contributions over time
+    plt.figure(figsize=(10, 6))
+    plt.plot(sol_extended.t / (24 * 3600), He_contrib_Fe, label="He from Fe", color="c")
+    plt.plot(sol_extended.t / (24 * 3600), He_contrib_Cr, label="He from Cr", color="b")
+    plt.plot(sol_extended.t / (24 * 3600), He_contrib_Ni_fast, label="He from Ni (fast)", color="g")
+    plt.plot(sol_extended.t / (24 * 3600), He_contrib_Ni_therm, label="He from Ni (thermal)", color="y")
+    plt.plot(sol_extended.t / (24 * 3600), He_contrib_B10, label="He from B-10", color="m")
+    plt.title("Helium Contribution from Different Elements Over Time")
     plt.xlabel("Time (days)")
+    plt.ylabel("Helium Production Contribution (atoms)")
     plt.legend(loc="best")
-    ax = plt.gca()
-    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2e"))
     plt.grid()
     plt.show()
 
-# Extract helium contributions
-He_contrib_Fe = sol_extended.y[7]
-He_contrib_Cr = sol_extended.y[8]
-He_contrib_Ni_fast = sol_extended.y[9]
-He_contrib_Ni_therm = sol_extended.y[10]
-He_contrib_B10 = sol_extended.y[11]
 
-# Plot helium contributions over time
-plt.figure(figsize=(10, 6))
-plt.plot(sol_extended.t / (24 * 3600), He_contrib_Fe, label="He from Fe", color="c")
-plt.plot(sol_extended.t / (24 * 3600), He_contrib_Cr, label="He from Cr", color="b")
-plt.plot(sol_extended.t / (24 * 3600), He_contrib_Ni_fast, label="He from Ni (fast)", color="g")
-plt.plot(sol_extended.t / (24 * 3600), He_contrib_Ni_therm, label="He from Ni (thermal)", color="y")
-plt.plot(sol_extended.t / (24 * 3600), He_contrib_B10, label="He from B-10", color="m")
-plt.title("Helium Contribution from Different Elements Over Time")
-plt.xlabel("Time (days)")
-plt.ylabel("Helium Production Contribution (atoms)")
-plt.legend(loc="best")
-plt.grid()
-plt.show()
+    # Obtain the total He production 
+    tot_at_He += He_contrib_Fe[-1] + He_contrib_Cr[-1] + He_contrib_Ni_fast[-1] + He_contrib_Ni_therm[-1] + He_contrib_B10[-1]
+
+print(f"Total helium production: {tot_at_He:.2e} atoms")

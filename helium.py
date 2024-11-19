@@ -70,17 +70,17 @@ def Bateman_sys_with_He_contrib(t, state, flux):
     
     # Reaction rates
     dN_58Ni_dt = -cross_sections["Ni58_fast"] * flux * N_58Ni
-    dN_59Ni_dt = cross_sections["Ni58_fast"] * flux * N_58Ni
-    dN_extraNi_dt = -cross_sections["Ni58_fast"] * flux * N_extraNi
+    dN_59Ni_dt = 0 #cross_sections["Ni58_fast"] * flux * N_58Ni
+    dN_extraNi_dt = 0 #-cross_sections["Ni58_fast"] * flux * N_extraNi
     dN_Fe_dt = -cross_sections["Fe_fast"] * flux * N_Fe
     dN_Cr_dt = -cross_sections["Cr_fast"] * flux * N_Cr
     dN_B10_dt = -cross_sections["B10_fast"] * flux * N_B10
     
     # Helium production contributions
-    dHe_Fe = cross_sections["Fe_fast"] * flux * N_Fe
-    dHe_Cr = cross_sections["Cr_fast"] * flux * N_Cr
-    dHe_Ni_fast = cross_sections["Ni58_fast"] * flux * (N_58Ni + N_59Ni + N_extraNi)
-    dHe_B10 = cross_sections["B10_fast"] * flux * N_B10
+    dHe_Fe = 0 #cross_sections["Fe_fast"] * flux * N_Fe
+    dHe_Cr = 0 #cross_sections["Cr_fast"] * flux * N_Cr
+    dHe_Ni_fast = 0 #cross_sections["Ni58_fast"] * flux * (N_58Ni + N_59Ni + N_extraNi)
+    dHe_B10 = 0 #cross_sections["B10_fast"] * flux * N_B10
     dN_He_dt = dHe_Fe + dHe_Cr + dHe_Ni_fast + dHe_B10
     
     # Combine rates
@@ -100,7 +100,7 @@ def Bateman_sys_with_He_contrib(t, state, flux):
 
 # Solve the system for each node
 results = []
-for flux in flux_values:
+for flux in [flux_values[1]]:
     sol = solve_ivp(
         lambda t, y: Bateman_sys_with_He_contrib(t, y, flux),
         t_span,
@@ -110,12 +110,19 @@ for flux in flux_values:
     )
     results.append(sol)
 
+
+
 # Plot helium concentration for each node
 for node_index, sol in enumerate(results):
+    sol_y = np.zeros_like(sol.y[0])
+    for i in range(4):
+        print(sol.y[i])
+        sol_y =+ np.array(sol.y[i])
+
     plt.figure(figsize=(10, 6))
     plt.plot(
         sol.t / (24 * 3600),
-        sol.y[6],
+        sol_y,
         label=f"Node {node_numbers[node_index]} (Flux={flux_values[node_index]:.2e})",
     )
     plt.title("Helium Concentration Over Time")
