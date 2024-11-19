@@ -110,7 +110,7 @@ def create_meshgrid(geom_data):
         fuel_inner_radius = geom_data.fuel_inner_diameter[i] / 2
 
         # Calculate r_values for this specific height
-        r_coolant_infinity = 14e-3 # 10 mm
+        r_coolant_infinity = 8e-3 # 8 mm
         r_cladding_gap = cladding_outer_radius - thickness_cladding
 
         r_coolant = np.array([r_coolant_infinity])
@@ -448,7 +448,7 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map):
 
     # Compute along the height
     for i_h, h in enumerate(h_vals):
-        # Starting values
+        # Cladding Outer
         cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
         cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
         # Compute along the radius
@@ -491,7 +491,6 @@ d_0 = 5e-8  # m^2/s
 q = 40262
 
 def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometrical_Data, T_map):
-    bubble_radius = 10e-6  # m
     d_0 = 5e-8  # m^2/s
     q = 40262
     """
@@ -523,12 +522,11 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     diffusivity = lambda temperature: d_0 * np.exp(-q / temperature)  # m^2/s
 
     # Compute the average maximum fuel temperature
-    points = [0.425, 0, 0.850]
     fuel_inner_diameter_avg = np.mean(Geometrical_Data.fuel_inner_diameter)
-    temperature_max_average_fuel = sum(
-        get_temperature_at_point(point, fuel_inner_diameter_avg / 2, T_map)
-        for point in points
-    ) / len(points)
+    temperature_max_average_fuel = np.mean(
+        [get_temperature_at_point(point, fuel_inner_diameter_avg / 2, T_map)
+        for point in Geometrical_Data.h_values]
+    )
 
     diffusivity_coeff = diffusivity(temperature_max_average_fuel)  # m^2/s
 
@@ -692,7 +690,7 @@ def main(params):
 
     ############################################################################
     # VARIABLES TO OPTIMIZE
-    thickness_cladding = 120e-6  # [m] - MAX Possible Value: 565e-6
+    thickness_cladding = 80e-6  # [m] - MAX Possible Value: 565e-6
     h_plenum = 1.8 # m
     ############################################################################
 
@@ -747,13 +745,17 @@ def main(params):
     fuel_inner_line = ax.axvline(x=0, color='g', linestyle='--', label='Fuel Inner Diameter')
     cladding_outer_line = ax.axvline(x=0, color='b', linestyle='--', label='Cladding Outer Diameter')
     cladding_inner_line = ax.axvline(x=0, color='y', linestyle='--', label='Cladding Inner Diameter')
+    MM_fuel = nf.mixture(params["Fuel_Proprieties"].Molar_Mass, params["Fuel_Proprieties"].Qualities, normalization_cond='normalize')
+    pu_weight = nf.mol2w([params["Fuel_Proprieties"].Qualities[-1]], [MM_fuel])[0]
+    dev_stechiometry = 2 - params["Fuel_Proprieties"].Oxigen_to_metal_ratio
+    T_fuel_melt = params["Fuel_Proprieties"].Melting_Temperature(pu_weight, dev_stechiometry, Burnup)
     t_melt_fuel_line = ax.axhline(y=2600+273, color='r', linestyle='--', label='Fuel Melting Temperature')
     t_melt_cladding_line = ax.axhline(y=650+273, color='g', linestyle='--', label='Cladding Melting Temperature')
     ax.legend()
 
     # Set limits for clarity
-    ax.set_xlim(0, max(Geometrical_Data.cladding_outer_diameter) / 2 + 3e-3)
-    ax.set_ylim(min(T_map.T.ravel()), max(T_map.T.ravel()) + 100)
+    ax.set_xlim(0, 8e-3)
+    ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
 
     # Update function for each frame in the animation
     def update(frame):
