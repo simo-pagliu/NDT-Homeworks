@@ -241,7 +241,7 @@ def thermal_resistance_fuel(Burnup, fuel, temperature):
     
     # Accounts for fuel regions due to restructuring
     if temperature > 1800:
-        Porosity = fuel.Porosity_Colummar
+        Porosity = fuel.Porosity_Columnar
     elif temperature > 1600:
         Porosity = fuel.Porosity_Equiaxed
     else:
