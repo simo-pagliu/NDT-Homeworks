@@ -25,12 +25,12 @@ molar_masses = {
 
 # Cross-sections (cm²)
 cross_sections = {
-    "B10_thermal": 3837e-24,  # 10B(n,α) thermal
-    "B10_fast": 623e-24,  # 10B(n,α) fast
-    "Fe_fast": 0.23e-24,  # Fe(n,α)
-    "Cr_fast": 0.20e-24,  # Cr(n,α)
-    "Ni58_fast": 4.2e-24,  # 58Ni(n,α)
-    "Ni59_thermal": 13.4e-24,  # 59Ni(n,γ)
+    "B10_thermal": 3837e-27,  # 10B(n,α) thermal
+    "B10_fast": 623e-27,  # 10B(n,α) fast
+    "Fe_fast": 0.23e-27,  # Fe(n,α)
+    "Cr_fast": 0.20e-27,  # Cr(n,α)
+    "Ni58_fast": 4.2e-27,  # 58Ni(n,α)
+    "Ni59_thermal": 13.4e-27,  # 59Ni(n,γ)
 }
 
 # Isotopic abundance
