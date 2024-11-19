@@ -323,7 +323,7 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
                 # Thermal resistance of the fuel
                 th_res = thermal_resistance_fuel(Burnup, fuel, T_radial[j-1]) 
                 # Compute the temperature
-                T_value = T_radial[idx_fuel] + power * th_res * (1 - (r/r_gap_fuel)**2)
+                T_value = T_radial[idx_fuel] + power * th_res * (1 - (r - r_fuel_in)**2/(r_gap_fuel - r_fuel_in)**2)
             
             # In the gap
             elif r < r_cladding_gap:
