@@ -545,8 +545,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     ## Compute the amount of gas released in plenum after 1 year
 
     # Production of fission gas in the fuel
-    time = 360 * 24 * 3600  # 1 year (of operation) in seconds
-    total_fission_gas = P_lambda(time)  # Total amount of fission gas produced
+    total_fission_gas = P_lambda(ThermoHydraulics.uptime)  # Total amount of fission gas produced
 
     # Total amount of fission gas inside the grains
     n_grains_pellet = 1e5  # Number of grains in a pellet
@@ -559,21 +558,18 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     # Calculate the percentage of helium trapped inside the fuel
     He_percentage = (total_fission_gas_grains / total_fission_gas)
 
-    # Vector of possible plenum heights
-    fuel_column_height = 850e-3  # m
-
     # Corresponding volume to accommodate gases
     r_cladding_gap = np.mean(np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding))
     r_gap_fuel = np.mean(np.array(Geometrical_Data.fuel_outer_diameter) / 2)
     
-    V_plenum = (np.pi * r_cladding_gap**2 * h_plenum) + (np.pi * (r_cladding_gap**2 - r_gap_fuel**2) * fuel_column_height)
+    V_plenum = (np.pi * r_cladding_gap**2 * h_plenum) + (np.pi * (r_cladding_gap**2 - r_gap_fuel**2) * Geometrical_Data.h_values[-1])
 
     # Find initial quantity of He present in the plenum
     initial_moles_he = p_gas * V_plenum / (8.314 * (T_gas))  # moles
 
     # Find the additional moles of fission gases released in the plenum
     fuel_outer_diameter_avg = np.mean(Geometrical_Data.fuel_outer_diameter)
-    V_pin = np.pi * (fuel_outer_diameter_avg / 2)**2 * fuel_column_height  # m^3
+    V_pin = np.pi * (fuel_outer_diameter_avg / 2)**2 * Geometrical_Data.h_values[-1]  # m^3
     additional_moles_fg = (total_fission_gas_released * V_pin) / 6.022e23  # moles
 
     # Find the total moles of gases in the plenum
