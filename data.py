@@ -11,7 +11,7 @@ Cladding_Proprieties = Material_Proprieties(
     Density=lambda eth: 7900 * (1 + eth)**-3,  # kg/m^3
     Thermal_Conductivity=lambda t: 13.95 + 0.01163 * t,  # W/m K
     Emissivity = 0.32, # -
-    Thermal_Expansion_Coeff=lambda t: -3.101e-4 + 1.545e-5 * t + 2.75e-9 * t**2,  # 1/°C
+    Thermal_Expansion_Coeff=lambda t: -3.101e-4 + 1.545e-5 * (t-273.15) + 2.75e-9 * (t-273.15)**2,  # 1/°C --> 1/K
     Specific_Heat=500,  # Approximate value in J/kg K for steel
     Melting_Temperature=1673,  # K
     
