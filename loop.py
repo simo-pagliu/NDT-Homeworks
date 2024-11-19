@@ -693,7 +693,7 @@ def main(params):
 
     ############################################################################
     # VARIABLES TO OPTIMIZE
-    thickness_cladding = 100e-6  # m
+    thickness_cladding = 120e-6  # [m] - MAX Possible Value: 565e-6
     h_plenum = 1.8 # m
     ############################################################################
 
