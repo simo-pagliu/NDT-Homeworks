@@ -1,93 +1,121 @@
 import numpy as np
-from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
+from matplotlib import ticker
+from scipy.integrate import solve_ivp
 
 # Constants
-SECONDS_PER_DAY = 86400
-DURATION_DAYS = 360
-DURATION_SECONDS = DURATION_DAYS * SECONDS_PER_DAY
+avogadro_number = 6.022e23  # atoms/mol
+density_steel = 7.9  # g/cm³ (approximate for stainless steel)
+time_seconds = 365 * 24 * 3600  # 1 year in seconds
 
-# Neutron flux parameters
-peak_neutron_flux_fast = 6.1e15  # n/cm^2/s
-peak_factors = np.array([0.572, 0.737, 0.868, 0.958, 0.983, 0.912, 0.802, 0.658, 0.498, 0.400])
+# Cladding composition (wt.%)
+composition = {
+    "Fe": 100 - (15.0 + 15.0 + 1.5 + 1.5 + 0.9 + 0.4 + 0.09),  # Balance is Iron
+    "Cr": 15.0,
+    "Ni": 15.0,
+    "B": 0.006,  # Boron content in wt.% (ppm equivalent: 60 ppm)
+}
+molar_masses = {
+    "Fe": 55.847,
+    "Cr": 51.996,
+    "Ni": 58.690,
+    "B": 10.811,
+}
 
-# Neutron capture cross-sections (in cm^2)
-sigma_th_Ni58 = 4.4e-24  # thermal for Ni-58
-sigma_f_Ni58 = 4.2e-24   # fast for Ni-58 (assumed same for simplicity)
-sigma_f_Ni59 = 1.3e-24   # fast for Ni-59
-sigma_f_Fe = 0.23e-24    # fast for Fe
-sigma_f_Cr = 0.20e-24    # fast for Cr
+# Cross-sections (cm²)
+cross_sections = {
+    "B10_fast": 623e-24,  # 10B(n,α) fast
+    "Fe_fast": 0.23e-24,  # Fe(n,α)
+    "Cr_fast": 0.20e-24,  # Cr(n,α)
+    "Ni58_fast": 4.2e-24,  # 58Ni(n,α)
+}
 
-# Helium production rate (arbitrary units, based on neutron flux and material properties)
-helium_production_rate = 1e-10  # atoms/cm^3/s
+# Isotopic abundance
+isotopic_abundance = {"Ni58": 0.683, "B10": 0.198}
 
-# Initial concentrations (arbitrary units)
-Ni58_initial = 1.0
-Ni59_initial = 0.0
-Fe_initial = 1.0
-Cr_initial = 1.0
-He_initial = 0.0  # initial helium concentration in cladding
+# Neutron flux data for each node
+node_centers = np.array([42.5, 127.5, 212.5, 297.5, 382.5, 467.5, 552.5, 637.5, 722.5, 807.5])  # mm
+peak_factors = np.array([0.572, 0.737, 0.868, 0.958, 1.0, 0.983, 0.912, 0.802, 0.658, 0.498])
+peak_flux = 6.1e15  # n/cm²/s at peak node
+Flux_values = peak_flux * peak_factors  # Flux at each node
 
-# Define the system of differential equations
-def isotopic_changes(t, y):
-    dNi58_dt = np.zeros(10)
-    dNi59_dt = np.zeros(10)
-    dFe_dt = np.zeros(10)
-    dCr_dt = np.zeros(10)
-    dHe_dt = np.zeros(10)  # helium concentration in cladding
+# Height differences for volumes
+node_heights = np.diff(node_centers, prepend=0)  # Add a 0 at the start for full range
+volumes = node_heights  # Volume proportional to height difference (assuming constant cross-sectional area)
 
-    for i in range(10):
-        # Neutron flux at each node
-        phi_fast = peak_factors[i] * peak_neutron_flux_fast
+# Helper function for initial concentrations
+def concentration(wt_percent, density, molar_mass):
+    return (wt_percent * density * avogadro_number) / molar_mass
 
-        # Concentrations at node i
-        Ni58 = y[i]
-        Ni59 = y[i + 10]
-        Fe = y[i + 20]
-        Cr = y[i + 30]
-        He = y[i + 40]  # helium concentration
+# Initial concentrations
+N_Fe_0 = concentration(composition["Fe"], density_steel, molar_masses["Fe"])
+N_Cr_0 = concentration(composition["Cr"], density_steel, molar_masses["Cr"])
+N_Ni_0 = concentration(composition["Ni"], density_steel, molar_masses["Ni"])
+N_58Ni_0 = isotopic_abundance["Ni58"] * N_Ni_0
+N_59Ni_0 = 0  # Initial 59Ni is 0
+N_extraNi_0 = N_Ni_0 * (1 - isotopic_abundance["Ni58"])
+N_B10_0 = concentration(composition["B"], density_steel, molar_masses["B"]) * isotopic_abundance["B10"]
+N_He_0 = 0  # Initial helium concentration
 
-        # Differential equations for isotopes
-        dNi58_dt[i] = -sigma_th_Ni58 * phi_fast * Ni58 - sigma_f_Ni58 * phi_fast * Ni58
-        dNi59_dt[i] = sigma_th_Ni58 * phi_fast * Ni58 - sigma_f_Ni59 * phi_fast * Ni59
-        dFe_dt[i] = -sigma_f_Fe * phi_fast * Fe
-        dCr_dt[i] = -sigma_f_Cr * phi_fast * Cr
-
-        # Helium production based on neutron flux and materials (simplified model)
-        dHe_dt[i] = helium_production_rate * phi_fast  # proportional to neutron flux
-
-    return np.concatenate((dNi58_dt, dNi59_dt, dFe_dt, dCr_dt, dHe_dt))
-
-# Initial conditions vector
-initial_conditions = np.concatenate((
-    Ni58_initial * np.ones(10),
-    Ni59_initial * np.ones(10),
-    Fe_initial * np.ones(10),
-    Cr_initial * np.ones(10),
-    He_initial * np.ones(10)
-))
-
-# Solve the differential equations
-solution = solve_ivp(
-    isotopic_changes,
-    [0, DURATION_SECONDS],
-    initial_conditions,
-    method='RK45',
-    dense_output=True
+# Extended state vector
+N_0_extended = np.array(
+    [N_Fe_0, N_Cr_0, N_58Ni_0, N_59Ni_0, N_extraNi_0, N_B10_0, N_He_0, 0, 0, 0, 0, 0]
 )
 
-# Plotting the results
-time_days = solution.t / SECONDS_PER_DAY
+# Time parameters
+t_0 = 0
+t_f = time_seconds
+t_span = (t_0, t_f)
+t_eval = np.linspace(t_0, t_f, 1000)
 
-# Plot helium concentration over time for each node
-plt.figure(figsize=(10, 6))
-for i in range(10):
-    plt.plot(time_days, solution.y[i+40], label=f'He Node {i+1}')
+# Bateman system of equations with helium contributions
+def Bateman_sys_with_He_contrib(t, state, flux):
+    N_Fe, N_Cr, N_58Ni, N_59Ni, N_extraNi, N_B10, N_He, He_Fe, He_Cr, He_Ni_fast, He_B10 = state
 
-plt.xlabel("Time (days)")
-plt.ylabel("Helium Concentration (arbitrary units)")
-plt.legend(loc="upper right", bbox_to_anchor=(1.2, 1))
-plt.title("Helium Concentration Over Time at Each Node")
-plt.show()
+    # Reaction rates
+    dN_58Ni_dt = -cross_sections["Ni58_fast"] * flux * N_58Ni
+    dN_59Ni_dt = cross_sections["Ni58_fast"] * flux * N_58Ni
+    dN_extraNi_dt = -cross_sections["Ni58_fast"] * flux * N_extraNi
+    dN_Fe_dt = -cross_sections["Fe_fast"] * flux * N_Fe
+    dN_Cr_dt = -cross_sections["Cr_fast"] * flux * N_Cr
+    dN_B10_dt = -cross_sections["B10_fast"] * flux * N_B10
 
-# Helium embrittlement might influence plenum design and cladding thickness.
+    # Helium production contributions
+    dHe_Fe = cross_sections["Fe_fast"] * flux * N_Fe
+    dHe_Cr = cross_sections["Cr_fast"] * flux * N_Cr
+    dHe_Ni_fast = cross_sections["Ni58_fast"] * flux * (N_58Ni + N_59Ni + N_extraNi)
+    dHe_B10 = cross_sections["B10_fast"] * flux * N_B10
+    dN_He_dt = dHe_Fe + dHe_Cr + dHe_Ni_fast + dHe_B10
+
+    return [
+        dN_Fe_dt,
+        dN_Cr_dt,
+        dN_58Ni_dt,
+        dN_59Ni_dt,
+        dN_extraNi_dt,
+        dN_B10_dt,
+        dN_He_dt,
+        dHe_Fe,
+        dHe_Cr,
+        dHe_Ni_fast,
+        dHe_B10,
+    ]
+
+# Solve the system for each node and store results
+helium_concentrations = []
+for flux in Flux_values:
+    sol = solve_ivp(
+        Bateman_sys_with_He_contrib,
+        t_span,
+        N_0_extended,
+        t_eval=t_eval,
+        method="RK45",
+        args=(flux,),
+    )
+    helium_concentrations.append(sol.y[6])  # N_He is at index 6
+
+# Calculate weighted average helium concentration
+helium_concentrations = np.array(helium_concentrations)
+weighted_average_helium = np.sum(helium_concentrations[:, -1] * volumes) / np.sum(volumes)
+
+print(f"Weighted Average Helium Concentration: {weighted_average_helium:.2e} atoms/m³")
