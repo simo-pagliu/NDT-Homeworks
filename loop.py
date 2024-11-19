@@ -25,7 +25,7 @@ class Material_Proprieties:
             self.Porosity = (self.Theoretical_Density - self.Density) / self.Density
         else:
             self.Density = Density
-        self.Porosity_Colummar = Porosity_Columnar
+        self.Porosity_Columnar = Porosity_Columnar
         self.Porosity_Equiaxed = Porosity_Equiaxed
         self.Molar_Mass = Molar_Mass
         self.Micro_Fission = Micro_Fission
