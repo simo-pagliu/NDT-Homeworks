@@ -1,8 +1,17 @@
-# 2D plot of the temperature profile
+import numpy as np
+from math import log
+import matplotlib.pyplot as plt
 
-R = Geometrical_Data.fuel_outer_diameter/2
+import functions as f
+import nuclei_func as nf
+from functions import Material_Proprieties, ThermoHydraulicSpecs, GeometryData, DimensioningData, Temperature_Map
+
+#  2D plot of the temperature profile
+
+R = GeometryData.fuel_outer_diameter/2
 R_void = 0.511873*10**-3
-R_new, R_start, T_hot = cold_to_hot_fuel(Fuel_Proprieties,Geometrical_Data,vars,h_vals) #fuel R after thermal expansion
+h_vals = GeometryData.h_values
+R_new, R_start, T_hot = f.cold_to_hot_fuel(Material_Proprieties,GeometryData,vars,h_vals) #fuel R after thermal expansion
 R_new_value = R_new[0]
 print(R_new_value)
 r_fuel_vector = np.linspace(R_void,R_new,1000)
@@ -11,20 +20,20 @@ r_gap_fuel = R_new_value
 r_end = R_void
 
 #x_axis definition
-r_gap_fuel = Geometrical_Data.fuel_outer_diameter / 2
-r_end = Geometrical_Data.fuel_inner_diameter / 2
+r_gap_fuel = GeometryData.fuel_outer_diameter / 2
+r_end = GeometryData.fuel_inner_diameter / 2
 r_plot = np.linspace(r_gap_fuel, r_end, 25)
 r_fuel = np.linspace(R_void,R_new_value)
 
 #plot fter restructuring
-temp_plot_bottom2 = [(get_temperature_at_point(0, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
-temp_plot_center2 = [(get_temperature_at_point(0.425, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
-temp_plot_top2 = [(get_temperature_at_point(0.850, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
+temp_plot_bottom2 = [(f.get_temperature_at_point(0, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
+temp_plot_center2 = [(f.get_temperature_at_point(0.425, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
+temp_plot_top2 = [(f.get_temperature_at_point(0.850, r, vars.T_map)*(1-((2*R_void**2)/(R_new_value**2-R_void**2))*log(R_new_value/R_void))) for r in r_fuel]
 
 # 2D plot of the temperature profile before restructuring
-temp_plot_bottom1 = [get_temperature_at_point(0, r, vars.T_map) for r in r_plot]
-temp_plot_center1 = [get_temperature_at_point(0.425, r, vars.T_map) for r in r_plot]
-temp_plot_top1 = [get_temperature_at_point(0.850, r, vars.T_map) for r in r_plot]
+temp_plot_bottom1 = [f.get_temperature_at_point(0, r, vars.T_map) for r in r_plot]
+temp_plot_center1 = [f.get_temperature_at_point(0.425, r, vars.T_map) for r in r_plot]
+temp_plot_top1 = [f.get_temperature_at_point(0.850, r, vars.T_map) for r in r_plot]
 
 # Create plot
 plt.plot(r_plot * 1e3, temp_plot_bottom2, label='Bottom w\ restructuring', marker='o')
@@ -36,8 +45,8 @@ plt.plot(r_plot*10**3 , temp_plot_bottom1, label='Bottom w\o restructuring', mar
 plt.plot(r_plot*10**3 , temp_plot_center1, label='Center w\o restructuring', marker='o', color ='grey')
 plt.plot(r_plot*10**3 , temp_plot_top1, label='Top w\o restructuring', marker='o', color ='brown')
 
-r_0 = Geometrical_Data.fuel_inner_diameter/2 * 1e3
-r_1 = Geometrical_Data.fuel_outer_diameter/2 * 1e3
+r_0 = GeometryData.fuel_inner_diameter/2 * 1e3
+r_1 = GeometryData.fuel_outer_diameter/2 * 1e3
 
 # Add shading to different regions
 colors = ['#00008B', '#0000CD', '#4169E1', '#6495ED', '#87CEEB']
