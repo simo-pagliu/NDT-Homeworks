@@ -8,6 +8,7 @@ import matplotlib.animation as animation
 import plotly.graph_objects as go
 import dill
 import nuclei_func as nf
+from scipy.interpolate import interp1d
 import subprocess
 import math
 import copy
@@ -50,7 +51,6 @@ class Material_Proprieties:
         self.Fission_Yield = Fission_Yield
         self.Nusselt_Number = Nusselt_Number
         self.Grain_diameter = Grain_diameter
-
         
 # Geometry Data
 class GeometryData:
@@ -67,7 +67,6 @@ class GeometryData:
         self.nominal_size = [(cladding_outer_diameter - fuel_outer_diameter)/2 - thickness_cladding for cladding_outer_diameter, fuel_outer_diameter, thickness_cladding in zip(cladding_outer_diameter, fuel_outer_diameter, thickness_cladding)]
         self.effective_gap_size = [nominal_size + fuel_roughness + cladding_roughness for nominal_size in self.nominal_size]
 
-
 # Thermo Hydraulics Specs
 class ThermoHydraulicSpecs:
     def __init__(self, coolant_inlet_temp, coolant_inlet_pressure, coolant_mass_flow_rate, q_linear_avg, uptime, h_peak_factor, peak_factors, neutron_flux_peak, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
@@ -80,7 +79,6 @@ class ThermoHydraulicSpecs:
         self.peak_factors = peak_factors
         self.neutron_flux_peak = neutron_flux_peak  # kg/s
         
-
 # Define temperature map
 class Temperature_Map:
     def __init__(self, X, Y, Z, Starting_Gas_Temperature='', Initial_Gas_Pressure='', Sigma_235='', Sigma_238='', Sigma_Pu='', Fission_Yield=''):
@@ -262,7 +260,6 @@ def thermal_resistance_fuel(Burnup, fuel, temperature):
 ##################################################
 def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_fuel_out, Burnup, He_percentage):
     h_values = geom_data.h_values
-    # r_values = calculate_r_values(geom_data)
 
     # Compute the height of each slice
     dz = h_values[1] - h_values[0]
@@ -273,7 +270,7 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
     
     # Initialize the temperature
     Temp_coolant = thermo_hyd_spec.coolant_inlet_temp
-
+    
     # Compute the temperature profile for each height step
     for i_h, h in enumerate(h_values): 
         # Get radii
@@ -342,18 +339,17 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
             # In the coolant
             else:
                 # Thermal resistance of the coolant
-                th_res, _ = coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, T_radial[0], i_h)
+                th_res, velocity = coolant_thermohydraulics(geom_data, thermo_hyd_spec, coolant, T_radial[0], i_h)
                 # Compute the temperature
                 T_value = T_radial[j-1] + power * th_res * (dr / (r_values[0] - r_coolant_cladding))
 
             # Compute new value of T
             T_radial.append(T_value)
-
         Z.append(T_radial)
-
+        velocity_vector.append(velocity)
     Z = np.array(Z)
     T_map = Temperature_Map(X, Y, Z)
-    return T_map
+    return T_map, velocity_vector
 
 ##################################################
 # Search Functions
@@ -675,7 +671,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
 
-    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure
+    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell
 
 
 def main(params):
@@ -723,7 +719,7 @@ def main(params):
             print(f"\033[91mFuel Diameter < Cladding Diameter, Gap is closed at iteration {j}\033[0m")
             break
         else:
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
+            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
