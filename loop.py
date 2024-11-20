@@ -618,7 +618,7 @@ def compute_burnup(params):
 
     MOX_volume = np.pi * (Geometrical_Data_Cold.fuel_outer_diameter[0]/2)**2 * Geometrical_Data_Cold.h_values[-1]
     MOX_mass = MOX_volume * Fuel_Proprieties.Density * 1000
-    MOX_molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities, normalization_cond='normalize') * 1e-3  # g/mol --> kg/mol
+    MOX_molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities) * 1e-3  # g/mol --> kg/mol
     MOX_mols = MOX_mass / MOX_molar_mass
     HM_molar_mass = [Fuel_Proprieties.Molar_Mass[i] for i in [0, 1, 3]]
     HM_qualities = [Fuel_Proprieties.Qualities[i] for i in [0, 1, 3]]
