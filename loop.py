@@ -667,7 +667,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     # Fission Gas Production
     He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
 
-    T_map = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
+    T_map, Coolant_Velocity = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
                               params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, T_fuel_out, Burnup, He_percentage)
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
@@ -1038,9 +1038,9 @@ if __name__ == "__main__":
     params = initialize_params()
     settings = {
         "animated_plot": {"show": False, "save": False},
-        "static_plot": {"show": False, "save": False},
+        "static_plot": {"show": True, "save": False},
         "3d_plot": {"show": False, "save": False},
-        "axial_plot": {"show": False, "save": False},
+        "axial_plot": {"show": True, "save": False},
         "notable_results": True,
     }
     print("Parameters initialized.")
