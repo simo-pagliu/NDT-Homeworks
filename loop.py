@@ -299,6 +299,8 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
         r_cladding_gap = geom_data.cladding_outer_diameter[i_h] / 2 - geom_data.thickness_cladding[i_h]
         r_gap_fuel = geom_data.fuel_outer_diameter[i_h] / 2
         r_fuel_in = geom_data.fuel_inner_diameter[i_h] / 2
+        if r_gap_fuel > r_cladding_gap:
+            print("\033[91mGAP CLOSED\033[0m")
 
         # # Check for gap closure
         # if r_gap_fuel == r_cladding_gap:
@@ -746,11 +748,11 @@ def main(params, settings):
     # Initial temperature map computed on cold geometrical data
     previous_T_map, _ = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
                             params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, T_fuel_out, Burnup, He_percentage)
-
+    prev_gap_thickness = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.fuel_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding)
     ############################################################################
     # ITERATIVE LOOP
     if settings["hot_run"]:
-        while residual > 5/100:
+        while residual > settings["residual_threshold"]:
             j += 1
 
             r_cladding_gap = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding)
@@ -765,6 +767,7 @@ def main(params, settings):
 
                 residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
                 previous_T_map = copy.deepcopy(T_map)
+
     else:
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
@@ -809,6 +812,10 @@ def main(params, settings):
         # Maximum coolant velocity
         Maximum_Coolant_Velocity = np.max(Coolant_Velocity)
         print(f"Maximum_Coolant_Velocity = {Maximum_Coolant_Velocity} m/s")
+
+        # Gap thickness
+        Min_Gap_Thickness = np.min(np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.fuel_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding))
+        print(f"Minimum Gap Thickness = {Min_Gap_Thickness*1e6} micron")
     
     ############################################################################
 
@@ -1068,11 +1075,12 @@ if __name__ == "__main__":
     params = initialize_params()
     settings = {
         "animated_plot": {"show": False, "save": False},
-        "static_plot": {"show": True, "save": False},
+        "static_plot": {"show": False, "save": False},
         "3d_plot": {"show": False, "save": False},
-        "axial_plot": {"show": True, "save": False},
+        "axial_plot": {"show": False, "save": False},
         "notable_results": True,
         "hot_run": True,
+        "residual_threshold": 1e-4,
     }
     print("Parameters initialized.")
     main(params, settings)
