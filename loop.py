@@ -111,8 +111,8 @@ def create_meshgrid(geom_data):
         r_coolant_infinity = 8e-3 # 8 mm
         r_cladding_gap = cladding_outer_radius - thickness_cladding
 
-        r_coolant = np.array([r_coolant_infinity])
-        r_cladding = np.array([cladding_outer_radius])
+        r_coolant = np.linspace(r_coolant_infinity, cladding_outer_radius, 4, endpoint=False)
+        r_cladding = np.linspace(cladding_outer_radius, r_cladding_gap, 4, endpoint=False)
         r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, 4, endpoint=False)
         if fuel_inner_radius == 0:
             r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 25, endpoint=False)
