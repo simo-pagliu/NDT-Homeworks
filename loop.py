@@ -93,6 +93,7 @@ class DimensioningData:
         self.T_gas = filling_gas_temperature  # °C
         self.T_map = temperature_map
 
+coolant_infinity_limit = 8e-3 # mm
 ##################################################
 # Radial values
 ##################################################
@@ -108,17 +109,19 @@ def create_meshgrid(geom_data):
         fuel_inner_radius = geom_data.fuel_inner_diameter[i] / 2
 
         # Calculate r_values for this specific height
-        r_coolant_infinity = 8e-3 # 8 mm
+        r_coolant_infinity = coolant_infinity_limit # 8 mm
         r_cladding_gap = cladding_outer_radius - thickness_cladding
 
         r_coolant = np.linspace(r_coolant_infinity, cladding_outer_radius, 4, endpoint=False)
         r_cladding = np.linspace(cladding_outer_radius, r_cladding_gap, 4, endpoint=False)
-        r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, 4, endpoint=False)
+        gap_points = 20
+        r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, gap_points, endpoint=False)
+        fuel_points = 50
         if fuel_inner_radius == 0:
-            r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 25, endpoint=False)
+            r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, fuel_points, endpoint=False)
             r_void = []
         else:
-            r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, 23, endpoint=False)
+            r_fuel = np.linspace(fuel_outer_radius, fuel_inner_radius, fuel_points-2, endpoint=False)
             r_void = [fuel_inner_radius, 0]
 
         # Concatenate all r_values for this height
@@ -136,6 +139,7 @@ def create_meshgrid(geom_data):
     X = r_values_array
 
     return X, Y
+
 ##################################################
 # Hydraulic Flow
 ##################################################
@@ -232,8 +236,9 @@ def thermal_resistance_gap(geom_data, helium, fuel, cladding, t_gas, He_percenta
     return thermal_resistance
 
 def thermal_resistance_fuel(Burnup, fuel, temperature):
-    A = 0.01926 + 1.06e-6 * fuel.Oxigen_to_metal_ratio + 2.63e-8 * fuel.Molar_Mass[-1]
-    B = 2.39e-4 + 1.37e-13 * fuel.Molar_Mass[-1]
+    pu_wt = nf.w2mol([fuel.Molar_Mass[-1]], [239])[0]
+    A = 0.01926 + 1.06e-6 * fuel.Oxigen_to_metal_ratio + 2.63e-8 * pu_wt
+    B = 2.39e-4 + 1.37e-13 * pu_wt
     D = 5.27e9
     E = 17109.5
     
@@ -284,7 +289,7 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
 
         power = power_profile(h, thermo_hyd_spec)
 
-        Temp_coolant = Temp_coolant + power * dz / ( m_rate / f * c_p)
+        Temp_coolant += power * dz / ( m_rate / f * c_p)
         
         # Initialize the temperature profile
         T_radial = [Temp_coolant] # Temperature of the coolant (ideally at r = infinity)
@@ -387,15 +392,15 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
     Volume_expansion_fission_gas = []
     
     for idx_h, h in enumerate(T_map.h[:, 0]):
-        # r_coolant_cladding = geom_data.cladding_outer_diameter[idx_h] / 2
-        # r_cladding_gap = geom_data.cladding_outer_diameter[idx_h] / 2 - geom_data.thickness_cladding[idx_h]
-        # idx_start = np.argmin(np.abs(T_map.r[idx_h, :] - r_coolant_cladding))
-        # idx_end = np.argmin(np.abs(T_map.r[idx_h, :] - r_cladding_gap))
-        # r_vals = T_map.r[idx_h, idx_start:idx_end]
+        r_coolant_cladding = geom_data.cladding_outer_diameter[idx_h] / 2
+        r_cladding_gap = geom_data.cladding_outer_diameter[idx_h] / 2 - geom_data.thickness_cladding[idx_h]
+        idx_start = np.argmin(np.abs(T_map.r[idx_h, :] - r_coolant_cladding))
+        idx_end = np.argmin(np.abs(T_map.r[idx_h, :] - r_cladding_gap))
+        r_vals = T_map.r[idx_h, idx_start:idx_end]
 
-        r_fuel_out = geom_data.fuel_outer_diameter[idx_h] / 2
-        idx_fuel = np.argmin(np.abs(T_map.r[idx_h, :] - r_fuel_out))
-        r_vals = T_map.r[idx_h, idx_fuel:-1]
+        # r_fuel_out = geom_data.fuel_outer_diameter[idx_h] / 2
+        # idx_fuel = np.argmin(np.abs(T_map.r[idx_h, :] - r_fuel_out))
+        # r_vals = T_map.r[idx_h, idx_fuel:-1]
 
         phi = power_profile(h, thermo_hyd_spec, value = 'neutron_flux') * thermo_hyd_spec.uptime
 
@@ -722,15 +727,13 @@ def main(params, settings):
 
     ############################################################################
     # VARIABLES TO OPTIMIZE
-    thickness_cladding = 80e-6  # [m] - MAX Possible Value: 565e-6
+    thickness_cladding = 100e-6  # [m] - MAX Possible Value: 565e-6
     h_plenum = 1.8 # m
     ############################################################################
 
     # Initial values
-    T_fuel_out = 1160  # K (Initial guess)
+    T_fuel_out = 1000  # K (Initial guess)
     He_percentage = 1  # Initial Value
-    iterations_gap = []
-    iterations_plenum = []
 
     # Set cladding thickness
     thick_cladding_vector = [thickness_cladding] * len(params["Geometrical_Data_Cold"].thickness_cladding)
@@ -746,21 +749,28 @@ def main(params, settings):
 
     ############################################################################
     # ITERATIVE LOOP
-    while residual > 1e-3:
-        j += 1
+    if settings["hot_run"]:
+        while residual > 5/100:
+            j += 1
 
-        r_cladding_gap = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding)
-        r_gap_fuel = np.array(Geometrical_Data.fuel_outer_diameter) / 2
-        diff = r_cladding_gap - r_gap_fuel
+            r_cladding_gap = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding)
+            r_gap_fuel = np.array(Geometrical_Data.fuel_outer_diameter) / 2
+            diff = r_cladding_gap - r_gap_fuel
 
-        if np.all(diff < 0):
-            print(f"\033[91mFuel Diameter < Cladding Diameter, Gap is closed at iteration {j}\033[0m")
-            break
-        else:
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
+            if np.all(diff < 0):
+                print(f"\033[91mFuel Diameter < Cladding Diameter, Gap is closed at iteration {j}\033[0m")
+                break
+            else:
+                T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
-            residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
-            previous_T_map = copy.deepcopy(T_map)
+                residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
+                previous_T_map = copy.deepcopy(T_map)
+    else:
+        T_map = previous_T_map
+        print("Hot run disabled, disabling print results, enabling plotting")
+        settings["notable_results"] = False
+        settings["static_plot"]["show"] = True
+        settings["axial_plot"]["show"] = True
     ############################################################################
 
     ############################################################################
@@ -828,7 +838,7 @@ def main(params, settings):
         ax.legend()
 
         # Set limits for clarity
-        ax.set_xlim(0, 8e-3)
+        ax.set_xlim(0, coolant_infinity_limit)
         ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
 
         # Update function for each frame in the animation
@@ -886,7 +896,7 @@ def main(params, settings):
         ax.set_ylabel("Temperature [K]")
 
         # Define a common radius grid
-        common_radius = np.linspace(0, 8e-3, 500)  # 500 points from 0 to 8 mm
+        common_radius = np.linspace(0, coolant_infinity_limit, 500)  # 500 points from 0 to 8 mm
 
         # Interpolate profiles to the common radius grid
         interpolated_profiles = []
@@ -958,7 +968,7 @@ def main(params, settings):
         )
 
         # Set limits for clarity
-        ax.set_xlim(0, 8e-3)
+        ax.set_xlim(0, coolant_infinity_limit)
         ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
 
         # Add title and legend
@@ -990,6 +1000,7 @@ def main(params, settings):
             return temperatures
 
         # Compute axial temperatures for each interface
+        coolant_temps = get_axial_temperature_profiles([coolant_infinity_limit for i in range(len(Geometrical_Data.h_values))])
         fuel_inner_temps = get_axial_temperature_profiles(
             [Geometrical_Data.fuel_inner_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
         )
@@ -1010,6 +1021,7 @@ def main(params, settings):
         h_vals_mm = Geometrical_Data.h_values * 1e3
 
         # Plot the temperature profiles along the height
+        ax.plot(coolant_temps, h_vals_mm, color="black", linestyle="-", label="Coolant")
         ax.plot(fuel_inner_temps, h_vals_mm, color="red", linestyle="-", label="Fuel Inner Radius")
         ax.plot(fuel_outer_temps, h_vals_mm, color="blue", linestyle="-", label="Fuel Outer Radius")
         ax.plot(cladding_outer_temps, h_vals_mm, color="green", linestyle="-", label="Cladding Outer Diameter")
@@ -1050,22 +1062,6 @@ def main(params, settings):
     if settings["3d_plot"]["show"] or settings["3d_plot"]["save"] == True:
         # Create the 3D plot
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        X, Y = np.meshgrid(T_map.r[0, :], T_map.h)
-        Z = T_map.T
-        ax.plot_surface(X, Y, Z, cmap='viridis')
-        ax.set_xlabel("Radius [m]")
-        ax.set_ylabel("Height [m]")
-        ax.set_zlabel("Temperature [K]")
-        ax.set_title("Temperature Profile")
-        
-        if settings["3d_plot"]["save"] == True:
-            # Save the plot
-            plt.savefig("temperature_profile_3d.png")
-
-        if settings["3d_plot"]["show"] == True:
-            # Show the plot
-            plt.show()
     ############################################################################
 
 if __name__ == "__main__":
@@ -1076,6 +1072,7 @@ if __name__ == "__main__":
         "3d_plot": {"show": False, "save": False},
         "axial_plot": {"show": True, "save": False},
         "notable_results": True,
+        "hot_run": True,
     }
     print("Parameters initialized.")
     main(params, settings)
