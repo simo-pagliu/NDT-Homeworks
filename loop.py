@@ -267,6 +267,7 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
     # Create the meshgrid
     X, Y = create_meshgrid(geom_data)
     Z = []
+    velocity_vector = [] # Velocity vector
     
     # Initialize the temperature
     Temp_coolant = thermo_hyd_spec.coolant_inlet_temp
@@ -674,7 +675,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell
 
 
-def main(params):
+def main(params, settings):
     """
     Main function that takes initialized parameters and executes the main logic.
     
@@ -705,9 +706,12 @@ def main(params):
     residual = 1  # Placeholder for residual
     j = 0
 
-    previous_T_map = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
+    # Initial temperature map computed on cold geometrical data
+    previous_T_map, _ = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
                             params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, T_fuel_out, Burnup, He_percentage)
 
+    ############################################################################
+    # ITERATIVE LOOP
     while residual > 1e-3:
         j += 1
 
@@ -723,81 +727,321 @@ def main(params):
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
+    ############################################################################
 
-    iterations_gap.append(T_map)
-    iterations_plenum.append(Gas_Pressure)
+    ############################################################################
+    # NOTABLE RESULTS
+    if settings["notable_results"]:
+        # Fuel Max Temperature
+        max_fuel_temperature = 2600 + 273
+        Fuel_Temperature_Above_Threshold = T_map.T[T_map.T > max_fuel_temperature]
+        print(Fuel_Temperature_Above_Threshold)
 
-    # Set up the figure and axis
-    fig, ax = plt.subplots()
-    ax.set_xlabel("Radius [m]")
-    ax.set_ylabel("Temperature [K]")
+        # Cladding Max Temperature
+        cladding_max_temperature = 650 + 273
+        cladding_midline_radii = [
+            (Geometrical_Data.cladding_outer_diameter[i] / 2 +
+            (Geometrical_Data.cladding_outer_diameter[i] / 2 - Geometrical_Data.thickness_cladding[i])) / 2
+            for i in range(len(Geometrical_Data.h_values))
+        ]
+        Cladding_Midline_Temps_Above_Threshold = []
+        for i, radius in enumerate(cladding_midline_radii):
+            # Interpolate temperature at the midline radius
+            interp_func = interp1d(T_map.r[i, :], T_map.T[i, :], kind="linear", fill_value="extrapolate")
+            temp_at_midline = interp_func(radius)
+            if temp_at_midline > cladding_max_temperature:
+                Cladding_Midline_Temps_Above_Threshold.append(temp_at_midline.item()) 
+        print(Cladding_Midline_Temps_Above_Threshold)
 
-    # Initialize lines and shadow container
-    line, = ax.plot([], [], marker='o')
-    shadow_lines = []
+        # Plenum Pressure
+        print(f"Plenum Pressure = {Plenum_Pressure*1e-6} MPa")
 
-    # Initialize vertical lines and legend
-    fuel_outer_line = ax.axvline(x=0, color='r', linestyle='--', label='Fuel Outer Diameter')
-    fuel_inner_line = ax.axvline(x=0, color='g', linestyle='--', label='Fuel Inner Diameter')
-    cladding_outer_line = ax.axvline(x=0, color='b', linestyle='--', label='Cladding Outer Diameter')
-    cladding_inner_line = ax.axvline(x=0, color='y', linestyle='--', label='Cladding Inner Diameter')
-    MM_fuel = nf.mixture(params["Fuel_Proprieties"].Molar_Mass, params["Fuel_Proprieties"].Qualities, normalization_cond='normalize')
-    pu_weight = nf.mol2w([params["Fuel_Proprieties"].Qualities[-1]], [MM_fuel])[0]
-    dev_stechiometry = 2 - params["Fuel_Proprieties"].Oxigen_to_metal_ratio
-    T_fuel_melt = params["Fuel_Proprieties"].Melting_Temperature(pu_weight, dev_stechiometry, Burnup)
-    t_melt_fuel_line = ax.axhline(y=2600+273, color='r', linestyle='--', label='Fuel Melting Temperature')
-    t_melt_cladding_line = ax.axhline(y=650+273, color='g', linestyle='--', label='Cladding Melting Temperature')
-    ax.legend()
+        # Istantaneous cladding plastic strain
 
-    # Set limits for clarity
-    ax.set_xlim(0, 8e-3)
-    ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
+        # Maximum cladding volumetric swelling
+        Maximum_Cladding_Volumetric_Swelling = np.max(Void_Swelling)
+        print(f"Maximum_Cladding_Volumetric_Swelling = {Maximum_Cladding_Volumetric_Swelling} %")
 
-    # Update function for each frame in the animation
-    def update(frame):
-        # Clear previous shadows if they exist
-        for shadow in shadow_lines:
-            shadow.remove()
-        shadow_lines.clear()
+        # Maximum coolant velocity
+        Maximum_Coolant_Velocity = np.max(Coolant_Velocity)
+        print(f"Maximum_Coolant_Velocity = {Maximum_Coolant_Velocity} m/s")
+    
+    ############################################################################
 
-        # Current height and profiles
-        height = T_map.h[frame] if T_map.h.ndim == 1 else T_map.h[frame, 0]
-        radius_profile = T_map.r[frame, :]
-        temperature_profile = T_map.T[frame, :]
+    ############################################################################
+    # ANIMATED PLOT
+    if settings["animated_plot"]["show"] or settings["animated_plot"]["save"] == True:
+        # Set up the figure and axis
+        fig, ax = plt.subplots()
+        ax.set_xlabel("Radius [m]")
+        ax.set_ylabel("Temperature [K]")
 
-        # Update title with current height
-        ax.set_title(f"Temperature Profile at Height: {height:.2f} m")
+        # Initialize lines and shadow container
+        line, = ax.plot([], [], marker='o')
+        shadow_lines = []
 
-        # Plot main line
-        line.set_data(radius_profile, temperature_profile)
+        # Initialize vertical lines and legend
+        fuel_outer_line = ax.axvline(x=0, color='r', linestyle='--', label='Fuel Outer Diameter')
+        fuel_inner_line = ax.axvline(x=0, color='g', linestyle='--', label='Fuel Inner Diameter')
+        cladding_outer_line = ax.axvline(x=0, color='b', linestyle='--', label='Cladding Outer Diameter')
+        cladding_inner_line = ax.axvline(x=0, color='y', linestyle='--', label='Cladding Inner Diameter')
+        MM_fuel = nf.mixture(params["Fuel_Proprieties"].Molar_Mass, params["Fuel_Proprieties"].Qualities, normalization_cond='normalize')
+        pu_weight = nf.mol2w([params["Fuel_Proprieties"].Qualities[-1]], [MM_fuel])[0]
+        dev_stechiometry = 2 - params["Fuel_Proprieties"].Oxigen_to_metal_ratio
+        T_fuel_melt = params["Fuel_Proprieties"].Melting_Temperature(pu_weight, dev_stechiometry, Burnup)
+        t_melt_fuel_line = ax.axhline(y=2600+273, color='r', linestyle='--', label='Fuel Melting Temperature')
+        t_melt_cladding_line = ax.axhline(y=650+273, color='g', linestyle='--', label='Cladding Melting Temperature')
+        ax.legend()
 
-        # Update vertical line positions
-        fuel_outer_line.set_xdata(Geometrical_Data.fuel_outer_diameter[frame] / 2)
-        fuel_inner_line.set_xdata(Geometrical_Data.fuel_inner_diameter[frame] / 2)
-        cladding_outer_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2)
-        cladding_inner_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2 - Geometrical_Data.thickness_cladding[frame])
+        # Set limits for clarity
+        ax.set_xlim(0, 8e-3)
+        ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
 
-        # Create shadow effect with trailing profiles
-        num_trails = 5  # Number of trailing lines
-        for i in range(1, num_trails + 1):
-            trail_frame = max(0, frame - i)
-            trail_opacity = 1 - (i / (num_trails + 1))
-            shadow, = ax.plot(T_map.r[trail_frame, :], T_map.T[trail_frame, :], color='blue', alpha=trail_opacity, linestyle='--')
-            shadow_lines.append(shadow)
+        # Update function for each frame in the animation
+        def update(frame):
+            # Clear previous shadows if they exist
+            for shadow in shadow_lines:
+                shadow.remove()
+            shadow_lines.clear()
 
-        return line, fuel_outer_line, fuel_inner_line, cladding_outer_line, cladding_inner_line, *shadow_lines
+            # Current height and profiles
+            height = T_map.h[frame] if T_map.h.ndim == 1 else T_map.h[frame, 0]
+            radius_profile = T_map.r[frame, :]
+            temperature_profile = T_map.T[frame, :]
 
-    # Create the animation with blit disabled
-    ani = animation.FuncAnimation(fig, update, frames=len(T_map.h), blit=False, repeat=True, interval=100, repeat_delay=1000)
+            # Update title with current height
+            ax.set_title(f"Temperature Profile at Height: {height:.2f} m")
 
-    # Save as GIF
-    # ani.save("temperature_profile.gif", writer='pillow', fps=3)  # Adjust fps as needed
+            # Plot main line
+            line.set_data(radius_profile, temperature_profile)
 
-    # Show plot (optional if you only want to save)
-    plt.show()
+            # Update vertical line positions
+            fuel_outer_line.set_xdata(Geometrical_Data.fuel_outer_diameter[frame] / 2)
+            fuel_inner_line.set_xdata(Geometrical_Data.fuel_inner_diameter[frame] / 2)
+            cladding_outer_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2)
+            cladding_inner_line.set_xdata(Geometrical_Data.cladding_outer_diameter[frame] / 2 - Geometrical_Data.thickness_cladding[frame])
 
+            # Create shadow effect with trailing profiles
+            num_trails = 5  # Number of trailing lines
+            for i in range(1, num_trails + 1):
+                trail_frame = max(0, frame - i)
+                trail_opacity = 1 - (i / (num_trails + 1))
+                shadow, = ax.plot(T_map.r[trail_frame, :], T_map.T[trail_frame, :], color='blue', alpha=trail_opacity, linestyle='--')
+                shadow_lines.append(shadow)
+
+            return line, fuel_outer_line, fuel_inner_line, cladding_outer_line, cladding_inner_line, *shadow_lines
+
+        # Create the animation with blit disabled
+        ani = animation.FuncAnimation(fig, update, frames=len(T_map.h), blit=False, repeat=True, interval=100, repeat_delay=1000)
+        
+        if settings["animated_plot"]["show"] == True:
+            # Show the animation
+            plt.show()
+        
+        if settings["animated_plot"]["save"] == True:
+            # Save as GIF
+            ani.save("temperature_profile.gif", writer='pillow', fps=3)
+    ############################################################################
+    
+    ############################################################################
+    # STATIC PLOT
+    if settings["static_plot"]["show"] or settings["static_plot"]["save"]:
+        # Set up the figure and axis
+        fig, ax = plt.subplots()
+        ax.set_xlabel("Radius [m]")
+        ax.set_ylabel("Temperature [K]")
+
+        # Define a common radius grid
+        common_radius = np.linspace(0, 8e-3, 500)  # 500 points from 0 to 8 mm
+
+        # Interpolate profiles to the common radius grid
+        interpolated_profiles = []
+        for i in range(len(T_map.r)):
+            interp_func = interp1d(T_map.r[i, :], T_map.T[i, :], kind="linear", fill_value="extrapolate")
+            interpolated_profiles.append(interp_func(common_radius))
+
+        interpolated_profiles = np.array(interpolated_profiles)
+
+        # Compute minimum and maximum temperature at each radius
+        min_temperature = interpolated_profiles.min(axis=0)
+        max_temperature = interpolated_profiles.max(axis=0)
+
+        # Shade the area between the min and max temperature profiles
+        ax.fill_between(
+            common_radius,
+            min_temperature,
+            max_temperature,
+            color="lightblue",
+            alpha=0.5,
+            label="Temperature Range",
+        )
+
+        # Compute interface radii and corresponding temperatures
+        fuel_inner_radius = [Geometrical_Data.fuel_inner_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        fuel_outer_radius = [Geometrical_Data.fuel_outer_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        cladding_outer_diameter = [Geometrical_Data.cladding_outer_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        cladding_inner_diameter = [
+            Geometrical_Data.cladding_outer_diameter[i] / 2 - Geometrical_Data.thickness_cladding[i]
+            for i in range(len(Geometrical_Data.h_values))
+        ]
+
+        # Interpolate temperatures for interface points
+        def interpolate_temp(radius_list):
+            temperatures = []
+            for i, radius in enumerate(radius_list):
+                interp_func = interp1d(T_map.r[i, :], T_map.T[i, :], kind="linear", fill_value="extrapolate")
+                temperatures.append(interp_func(radius))
+            return temperatures
+
+        fuel_inner_temps = interpolate_temp(fuel_inner_radius)
+        fuel_outer_temps = interpolate_temp(fuel_outer_radius)
+        cladding_outer_temps = interpolate_temp(cladding_outer_diameter)
+        cladding_inner_temps = interpolate_temp(cladding_inner_diameter)
+
+        # Plot the interface lines
+        ax.plot(fuel_inner_radius, fuel_inner_temps, color="red", linestyle="-", label="Fuel Inner Radius")
+        ax.plot(fuel_outer_radius, fuel_outer_temps, color="blue", linestyle="-", label="Fuel Outer Radius")
+        ax.plot(cladding_outer_diameter, cladding_outer_temps, color="green", linestyle="-", label="Cladding Outer Diameter")
+        ax.plot(cladding_inner_diameter, cladding_inner_temps, color="purple", linestyle="-", label="Cladding Inner Diameter")
+
+        # Add melting temperature lines
+        MM_fuel = nf.mixture(
+            params["Fuel_Proprieties"].Molar_Mass,
+            params["Fuel_Proprieties"].Qualities,
+            normalization_cond="normalize",
+        )
+        pu_weight = nf.mol2w([params["Fuel_Proprieties"].Qualities[-1]], [MM_fuel])[0]
+        dev_stechiometry = 2 - params["Fuel_Proprieties"].Oxigen_to_metal_ratio
+        T_fuel_melt = params["Fuel_Proprieties"].Melting_Temperature(
+            pu_weight, dev_stechiometry, Burnup
+        )
+
+        t_melt_fuel_line = ax.axhline(
+            y=2600 + 273, color="r", linestyle="--", label="Fuel Melting Temperature"
+        )
+        t_melt_cladding_line = ax.axhline(
+            y=650 + 273, color="g", linestyle="--", label="Cladding Melting Temperature"
+        )
+
+        # Set limits for clarity
+        ax.set_xlim(0, 8e-3)
+        ax.set_ylim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
+
+        # Add title and legend
+        ax.set_title("Temperature Profiles Across the Radius with Boundaries")
+        ax.legend()
+
+        # Show or save the plot
+        if settings["static_plot"]["show"]:
+            plt.show()
+
+        if settings["static_plot"]["save"]:
+            fig.savefig("static_temperature_profiles_with_boundaries.png", dpi=300)
+    ############################################################################
+    
+    ############################################################################
+    # AXIAL PLOT
+    if settings["axial_plot"]["show"] or settings["axial_plot"]["save"]:
+        # Set up the figure and axis
+        fig, ax = plt.subplots()
+        ax.set_xlabel("Temperature [K]")
+        ax.set_ylabel("Height [mm]")
+
+        # Extract temperature profiles along the height for each interface
+        def get_axial_temperature_profiles(interface_radii):
+            temperatures = []
+            for i, radius in enumerate(interface_radii):
+                interp_func = interp1d(T_map.r[i, :], T_map.T[i, :], kind="linear", fill_value="extrapolate")
+                temperatures.append(interp_func(radius))
+            return temperatures
+
+        # Compute axial temperatures for each interface
+        fuel_inner_temps = get_axial_temperature_profiles(
+            [Geometrical_Data.fuel_inner_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        )
+        fuel_outer_temps = get_axial_temperature_profiles(
+            [Geometrical_Data.fuel_outer_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        )
+        cladding_outer_temps = get_axial_temperature_profiles(
+            [Geometrical_Data.cladding_outer_diameter[i] / 2 for i in range(len(Geometrical_Data.h_values))]
+        )
+        cladding_inner_temps = get_axial_temperature_profiles(
+            [
+                Geometrical_Data.cladding_outer_diameter[i] / 2 - Geometrical_Data.thickness_cladding[i]
+                for i in range(len(Geometrical_Data.h_values))
+            ]
+        )
+
+        # Height values in mm
+        h_vals_mm = Geometrical_Data.h_values * 1e3
+
+        # Plot the temperature profiles along the height
+        ax.plot(fuel_inner_temps, h_vals_mm, color="red", linestyle="-", label="Fuel Inner Radius")
+        ax.plot(fuel_outer_temps, h_vals_mm, color="blue", linestyle="-", label="Fuel Outer Radius")
+        ax.plot(cladding_outer_temps, h_vals_mm, color="green", linestyle="-", label="Cladding Outer Diameter")
+        ax.plot(cladding_inner_temps, h_vals_mm, color="purple", linestyle="-", label="Cladding Inner Diameter")
+
+        # Plot reference horizontal lines for melting temperatures
+        MM_fuel = nf.mixture(
+            params["Fuel_Proprieties"].Molar_Mass,
+            params["Fuel_Proprieties"].Qualities,
+            normalization_cond="normalize",
+        )
+        pu_weight = nf.mol2w([params["Fuel_Proprieties"].Qualities[-1]], [MM_fuel])[0]
+        dev_stechiometry = 2 - params["Fuel_Proprieties"].Oxigen_to_metal_ratio
+        T_fuel_melt = params["Fuel_Proprieties"].Melting_Temperature(
+            pu_weight, dev_stechiometry, Burnup
+        )
+        t_cladding_melt = params["Cladding_Proprieties"].Melting_Temperature
+
+        ax.axvline(x=2600 + 273, color="r", linestyle="--", label="Fuel Melting Temperature")
+        ax.axvline(x=650 + 273, color="g", linestyle="--", label="Cladding Melting Temperature")
+
+        # Set plot limits and labels
+        ax.set_xlim(min(T_map.T.ravel()) - 100, max(T_map.T.ravel()) + 100)
+        ax.set_ylim(0, max(h_vals_mm))
+        ax.set_title("Axial Temperature Profiles Along Interfaces")
+        ax.legend()
+
+        # Show or save the plot
+        if settings["axial_plot"]["show"]:
+            plt.show()
+
+        if settings["axial_plot"]["save"]:
+            fig.savefig("axial_temperature_profiles_along_interfaces.png", dpi=300)
+    ############################################################################
+
+    ############################################################################
+    # 3D PLOT
+    if settings["3d_plot"]["show"] or settings["3d_plot"]["save"] == True:
+        # Create the 3D plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        X, Y = np.meshgrid(T_map.r[0, :], T_map.h)
+        Z = T_map.T
+        ax.plot_surface(X, Y, Z, cmap='viridis')
+        ax.set_xlabel("Radius [m]")
+        ax.set_ylabel("Height [m]")
+        ax.set_zlabel("Temperature [K]")
+        ax.set_title("Temperature Profile")
+        
+        if settings["3d_plot"]["save"] == True:
+            # Save the plot
+            plt.savefig("temperature_profile_3d.png")
+
+        if settings["3d_plot"]["show"] == True:
+            # Show the plot
+            plt.show()
+    ############################################################################
 
 if __name__ == "__main__":
     params = initialize_params()
+    settings = {
+        "animated_plot": {"show": False, "save": False},
+        "static_plot": {"show": False, "save": False},
+        "3d_plot": {"show": False, "save": False},
+        "axial_plot": {"show": False, "save": False},
+        "notable_results": True,
+    }
     print("Parameters initialized.")
-    main(params)
+    main(params, settings)
