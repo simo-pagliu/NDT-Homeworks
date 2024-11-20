@@ -492,12 +492,6 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map):
 # Size of bubble radius
 a = 10e-6  # m
 
-# Starting gas temperature
-T_gas = 20 + 273 # °C --> K
-
-# Initial gas pressure
-p_gas = 1e5  # Pa
-
 # Fission cross sections (see file "Useful Data.xlsx")
 sigma_235 = 1.047756375  # barn
 sigma_238 = 0.55801001  # barn
@@ -584,7 +578,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     V_plenum = (np.pi * r_cladding_gap**2 * h_plenum) + (np.pi * (r_cladding_gap**2 - r_gap_fuel**2) * Geometrical_Data.h_values[-1])
 
     # Find initial quantity of He present in the plenum
-    initial_moles_he = p_gas * V_plenum / (8.314 * (T_gas))  # moles
+    initial_moles_he = Geometrical_Data.Initial_Gas_Pressure * V_plenum / (8.314 * (Geometrical_Data.Initial_Gas_Temperature))  # moles
 
     # Find the additional moles of fission gases released in the plenum
     fuel_outer_diameter_avg = np.mean(Geometrical_Data.fuel_outer_diameter)
@@ -595,7 +589,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     total_moles_gas = initial_moles_he + additional_moles_fg  # moles
 
     # Find the new pressure in the plenum
-    new_p_gas = total_moles_gas * 8.314 * (T_gas) / V_plenum  # Pa
+    new_p_gas = total_moles_gas * 8.314 * (Geometrical_Data.Initial_Gas_Temperature) / V_plenum  # Pa
 
     return He_percentage, new_p_gas
 
@@ -1075,12 +1069,12 @@ if __name__ == "__main__":
     params = initialize_params()
     settings = {
         "animated_plot": {"show": False, "save": False},
-        "static_plot": {"show": False, "save": False},
+        "static_plot": {"show": True, "save": False},
         "3d_plot": {"show": False, "save": False},
-        "axial_plot": {"show": False, "save": False},
+        "axial_plot": {"show": True, "save": False},
         "notable_results": True,
         "hot_run": True,
-        "residual_threshold": 1e-4,
+        "residual_threshold": 1e-3,
     }
     print("Parameters initialized.")
     main(params, settings)
