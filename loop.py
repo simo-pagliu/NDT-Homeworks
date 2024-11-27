@@ -2,15 +2,15 @@
 # Imports
 ##################################################
 import numpy as np
-import sympy as sp
+# import sympy as sp
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import plotly.graph_objects as go
+# import plotly.graph_objects as go
 import dill
 import nuclei_func as nf
 from scipy.interpolate import interp1d
-import subprocess
-import math
+# import subprocess
+import math # Used in some data
 import copy
 ##################################################
 # Classes
@@ -98,9 +98,6 @@ coolant_infinity_limit = 6e-3 # mm
 # Radial values
 ##################################################
 def create_meshgrid(geom_data):
-    # Check if the gap is closed
-    Closure = check_gap_closure(geom_data)
-
     r_values_list = []
     for i in range(len(geom_data.h_values)):
         # Extract the corresponding values for this height
@@ -118,7 +115,8 @@ def create_meshgrid(geom_data):
 
         gap_points = 5
         cladding_points = 2
-        if not Closure:
+        available_gap = cladding_outer_radius - thickness_cladding - fuel_outer_radius
+        if available_gap > 0:
             r_gap = np.linspace(r_cladding_gap, fuel_outer_radius, gap_points, endpoint=False)
             r_cladding = np.linspace(cladding_outer_radius, r_cladding_gap, cladding_points, endpoint=False)
         else:
@@ -235,7 +233,8 @@ def thermal_resistance_gap(geom_data, helium, fuel, cladding, t_gas, He_percenta
     radius_gap_in = geom_data.fuel_outer_diameter[i_h] / 2
 
     # Conductive heat transfer
-    conduction = helium.Thermal_Conductivity(t_gas, He_percentage) / geom_data.effective_gap_size[i_h]
+    gap_size = max(geom_data.effective_gap_size[i_h], 1e-6)  # Prevent zero or negative gap size
+    conduction = helium.Thermal_Conductivity(t_gas, He_percentage) / gap_size
 
     # Radiative heat transfer
     radiation = 4 * 5.67e-8 * (t_fuel_out**3) / (1/(fuel.Emissivity) + 1/(cladding.Emissivity) - 1)
@@ -307,9 +306,6 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
         # Initialize the temperature profile
         T_radial = [Temp_coolant] # Temperature of the coolant (ideally at r = infinity)
 
-        # Create Limits
-        Closure = check_gap_closure(geom_data)
-
         r_coolant_cladding = geom_data.cladding_outer_diameter[i_h] / 2
         r_cladding_gap = geom_data.cladding_outer_diameter[i_h] / 2 - geom_data.thickness_cladding[i_h]
         r_gap_fuel = geom_data.fuel_outer_diameter[i_h] / 2
@@ -333,19 +329,18 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
                 
                 # Colunmar Region
                 if T_radial[j-1] > 1800:
-                    fuel.Percent_of_Theoretical_Density = 100
+                    fuel.Percent_of_Theoretical_Density = 98
                     
                 # Equiaxed Region
                 elif T_radial[j-1] > 1600:
-                    fuel.Percent_of_Theoretical_Density = 98
+                    fuel.Percent_of_Theoretical_Density = 96
 
                 # Thermal resistance of the fuel
                 th_res = thermal_resistance_fuel(Burnup, fuel, T_radial[j-1]) 
                 # Compute the temperature
-
                 T_value = T_radial[idx_fuel] + power * th_res * (1 - (r - r_fuel_in)**2/(r_gap_fuel - r_fuel_in)**2)
             # In the gap
-            elif r < r_cladding_gap and not Closure:
+            elif r < r_cladding_gap and idx_fuel != idx_gap:
                 # Thermal resistance of the gap
                 th_res = thermal_resistance_gap(geom_data, gap, fuel, cladding, T_radial[j-1], He_percentage, T_fuel_out, i_h)
                 # Compute the temperature
@@ -479,11 +474,9 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
     # Expansion coefficient
     cladding_alpha = cladding.Thermal_Expansion_Coeff
 
-    Closure = check_gap_closure(geom_data)
-
     # Compute along the height
     for i_h, h in enumerate(h_vals):
-        # Cladding Outer Geometry
+        # Cladding Outer Cold Geometry
         cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
         cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
 
@@ -518,11 +511,6 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
 # Size of bubble radius
 a = 10e-6  # m
 
-# Fission cross sections (see file "Useful Data.xlsx")
-sigma_235 = 1.047756375  # barn
-sigma_238 = 0.55801001  # barn
-sigma_pu = 1.689844625  # barn
-
 # Fission yield
 fission_yield = 0.3
 
@@ -543,9 +531,9 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     molar_mass = nf.mixture(Fuel_Proprieties.Molar_Mass, Fuel_Proprieties.Qualities, normalization_cond='normalize')  # g/mol
 
     # Calculate macroscopic cross sections
-    macro_235 = nf.macro(sigma_235, Fuel_Proprieties.Density, molar_mass)  # cm^-1
-    macro_238 = nf.macro(sigma_238, Fuel_Proprieties.Density, molar_mass)  # cm^-1
-    macro_pu = nf.macro(sigma_pu, Fuel_Proprieties.Density, molar_mass)  # cm^-1
+    macro_235 = nf.macro(Fuel_Proprieties.Micro_Fission[0], Fuel_Proprieties.Density, molar_mass)  # cm^-1
+    macro_238 = nf.macro(Fuel_Proprieties.Micro_Fission[1], Fuel_Proprieties.Density, molar_mass)  # cm^-1
+    macro_pu = nf.macro(Fuel_Proprieties.Micro_Fission[3], Fuel_Proprieties.Density, molar_mass)  # cm^-1
 
     fission_xs = nf.mixture([macro_235, macro_238, 0, macro_pu], Fuel_Proprieties.Qualities, normalization_cond='normalize')  # cm^-1
 
@@ -678,9 +666,8 @@ def check_gap_closure(Geometrical_Data):
     for i_h in range(len(Geometrical_Data.h_values)):
         r_cladding_gap = Geometrical_Data.cladding_outer_diameter[i_h] / 2 - Geometrical_Data.thickness_cladding[i_h]
         r_gap_fuel = Geometrical_Data.fuel_outer_diameter[i_h] / 2
-        if r_gap_fuel > r_cladding_gap:
+        if r_gap_fuel >= r_cladding_gap:
             Closure = True
-            print("\033[91mGap is closed\033[0m")
     return Closure
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
@@ -702,7 +689,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     Geometrical_Data.fuel_inner_diameter, \
     Geometrical_Data.cladding_outer_diameter, \
     Geometrical_Data.thickness_cladding = thermal_expansion(params["Fuel_Proprieties"], params["Cladding_Proprieties"], params["Geometrical_Data_Cold"], previous_T_map, Geometrical_Data)
-
+    
     # Void Formation due to Restructuring
     R_equiaxied = get_radius_at_temperature(1600, previous_T_map)
     R_columnar = get_radius_at_temperature(1800, previous_T_map)
@@ -712,7 +699,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     # Void Swelling
     void_swell, \
     Geometrical_Data.cladding_outer_diameter, \
-    Geometrical_Data.thickness_cladding = void_swelling(previous_T_map, Geometrical_Data, params["ThermoHydraulics"])
+    Geometrical_Data.thickness_cladding = void_swelling(previous_T_map, params["Geometrical_Data_Cold"], params["ThermoHydraulics"])
 
     # Fission Gas Production
     He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
@@ -725,21 +712,20 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
 
     return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell
 
-def main(params, settings):
-    """
-    Main function that takes initialized parameters and executes the main logic.
-    
-    Args:
-        params (dict): Dictionary containing parameters.
-    """
-    Burnup = compute_burnup(params)
-    print("Burnup:", Burnup)
+
 
     ############################################################################
-    # VARIABLES TO OPTIMIZE
-    thickness_cladding = 100e-6  # [m] - MAX Possible Value: 565e-6
-    h_plenum = 1.8 # m
-    ############################################################################
+
+def main(thickness_cladding, h_plenum):
+    params = initialize_params()
+    settings = {
+        "hot_run": True,
+        "residual_threshold": 1e-6,
+    }
+    print("Parameters initialized.")
+
+    Burnup = compute_burnup(params)
+    print("Burnup:", Burnup)
 
     # Initial values
     T_fuel_out = 1000  # K (Initial guess)
@@ -759,13 +745,18 @@ def main(params, settings):
     ############################################################################
     # ITERATIVE LOOP
     if settings["hot_run"]:
-        while residual > settings["residual_threshold"]:
+        Closure = False
+        while residual > settings["residual_threshold"] and Closure == False:
             j += 1
 
             T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
+
+            Closure = check_gap_closure(Geometrical_Data)
+            if Closure:
+                print("Gap Closure Detected")
 
     else:
         T_map = previous_T_map
