@@ -761,9 +761,5 @@ def main(thickness_cladding, h_plenum):
     else:
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
-        settings["notable_results"] = False
-        settings["static_plot"]["show"] = True
-        settings["axial_plot"]["show"] = True
-    ############################################################################
 
     return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit
