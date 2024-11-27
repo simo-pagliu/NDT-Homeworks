@@ -393,37 +393,60 @@ def get_radius_at_temperature(T_requested,T_map):
 ##################################################
 def void_swelling(T_map, geom_data, thermo_hyd_spec):
     Volume_expansion_fission_gas = []
+    cladding_outer_diameter_swelled = []
+    thickness_cladding_swelled = []
 
     for idx_h, h in enumerate(T_map.h[:, 0]):
         r_coolant_cladding = geom_data.cladding_outer_diameter[idx_h] / 2
-        r_cladding_gap = geom_data.cladding_outer_diameter[idx_h] / 2 - geom_data.thickness_cladding[idx_h]
+        r_cladding_gap = r_coolant_cladding - geom_data.thickness_cladding[idx_h]
+        r_gap_fuel = geom_data.fuel_outer_diameter[idx_h] / 2
+
+        # Check gap size
+        current_gap_size = r_cladding_gap - r_gap_fuel
+
+        # Compute the average temperature in the cladding region
         idx_start = np.argmin(np.abs(T_map.r[idx_h, :] - r_coolant_cladding))
         idx_end = np.argmin(np.abs(T_map.r[idx_h, :] - r_cladding_gap))
         r_vals = T_map.r[idx_h, idx_start:idx_end]
 
+        # Compute average temperature in this region
+        if len(r_vals) == 0:
+            temperature_avg = get_temperature_at_point(h, r_cladding_gap, T_map)
+        else:
+            temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
+            temperature_avg = np.mean(temperature)
+
+        # Compute void swelling based on the temperature and neutron flux
         phi = power_profile(h, thermo_hyd_spec, value='neutron_flux') * thermo_hyd_spec.uptime
-        temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
-        temperature_avg = np.mean(temperature)
+        void_swelling_fraction = (
+            1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
+        )
+        if void_swelling_fraction < 0:
+            void_swelling_fraction = 0  # Ensure swelling is non-negative
+        Volume_expansion_fission_gas.append(void_swelling_fraction)
 
-        temp = 1.5e-3 * np.exp(-2.5 * ((temperature_avg - 273 - 450) / 100) ** 2) * (phi / 1e22) ** 2.75
-        if temp < 0:
-            temp = 0
-        Volume_expansion_fission_gas.append(temp)
+        # Compute new cladding geometry due to swelling
+        outer_r_before = geom_data.cladding_outer_diameter[idx_h] / 2
+        outer_r_swelled = outer_r_before * (1 + 1 / 3 * void_swelling_fraction / 100)
+        
+        inner_r_before = outer_r_before - geom_data.thickness_cladding[idx_h]
 
-    # Calculate new cladding dimensions
-    radius_before = [d / 2 for d in geom_data.cladding_outer_diameter]
-    radius_swelled = [rb * (1 + 1 / 3 * swell / 100) for rb, swell in zip(radius_before, Volume_expansion_fission_gas)]
-    cladding_outer_diameter_swelled = [2 * r for r in radius_swelled]
+        available_gap = inner_r_before - geom_data.fuel_outer_diameter[idx_h] / 2
+        if available_gap > 0:
+            inner_r_swelled = inner_r_before * (1 + 1 / 3 * void_swelling_fraction / 100)
+        else:
+            inner_r_swelled  = inner_r_before
 
-    thickness_cladding_swelled = [
-        ro_swelled - np.sqrt(ro_swelled**2 - (swell + 1) * ((d_outer / 2)**2 - (d_outer / 2 - thickness)**2))
-        for ro_swelled, swell, d_outer, thickness in zip(radius_swelled, Volume_expansion_fission_gas, geom_data.cladding_outer_diameter, geom_data.thickness_cladding)
-    ]
+        # Update swelled geometry
+        cladding_outer_diameter_swelled.append(2 * outer_r_swelled)
+        thickness_cladding_swelled.append(outer_r_swelled - inner_r_swelled)
 
     return Volume_expansion_fission_gas, cladding_outer_diameter_swelled, thickness_cladding_swelled
 
-
-def get_R_void(Fuel_Proprieties, R_col, R_eq):
+##################################################
+# Central Void Formation
+##################################################
+def get_R_void(Fuel_Proprieties, R_col, R_eq, Geometry_Data):
         
     R_void = []
     density_af = Fuel_Proprieties.Density
@@ -431,7 +454,12 @@ def get_R_void(Fuel_Proprieties, R_col, R_eq):
     density_equiaxed= Fuel_Proprieties.Theoretical_Density * (1 - Fuel_Proprieties.Porosity_Equiaxed)
     
     for r in range(len(R_col)):
-        
+        r_fuel_out = Geometry_Data.fuel_outer_diameter[r] / 2
+        if R_col[r] > r_fuel_out:
+            R_col[r] = r_fuel_out
+        if R_eq[r] > r_fuel_out:
+            R_eq[r] = r_fuel_out
+
         R_voidd = np.sqrt(R_col[r]**2 - R_eq[r]**2*(density_af/density_columnar) +(R_eq[r]**2 - R_col[r]**2)*(density_equiaxed/density_af))
         R_void.append(R_voidd)
         
@@ -458,14 +486,18 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
         # Starting values
         fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
         fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
-        # Compute along the radius
-        for r in [fuel_inner, fuel_outer]:
-            T_now = get_temperature_at_point(h, r, T_map)
-            Expanded_Radius = r * (1 + fuel_alpha * (T_now - T_0))
-            if r == fuel_inner:
-                fuel_inner_hot.append(2*Expanded_Radius)
-            else:
-                fuel_outer_hot.append(2*Expanded_Radius)
+
+        # Average radius and temperature in the middle of the fuel
+        avg_radius = (fuel_outer + fuel_inner) / 2
+        T_now = get_temperature_at_point(h, avg_radius, T_map)
+
+        # Outer radius
+        r_out_expanded = fuel_outer * (1 + fuel_alpha * (T_now - T_0))
+        fuel_outer_hot.append(2*r_out_expanded)
+        
+        # Inner radius
+        r_in_expanded =  fuel_inner * (1 + fuel_alpha * (T_now - T_0))
+        fuel_inner_hot.append(2*r_in_expanded)
 
     #### Cladding ####
     # Initialize
@@ -480,28 +512,27 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
         cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
         cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
 
-        if not Closure:
-            # Compute along the radius for both outer and inner cladding
-            for r, is_outer in [(cladding_outer_radius, True), (cladding_inner_radius, False)]:
-                T_now = get_temperature_at_point(h, r, T_map)
-                strain = cladding_alpha(T_now)
-                expanded_radius = r * (1 + strain)
+        # Compute along the radius for both outer and inner cladding
+        for r, is_outer in [(cladding_outer_radius, True), (cladding_inner_radius, False)]:
+            T_now = get_temperature_at_point(h, r, T_map)
+            strain = cladding_alpha(T_now)
+            expanded_radius = r * (1 + strain)
 
-                if is_outer:
-                    # Append expanded outer radius
-                    cladding_outer_hot.append(2 * expanded_radius)
+            if is_outer:
+                # Append expanded outer radius
+                cladding_outer_hot.append(2 * expanded_radius)
+            else:               
+                # Check if gap is not closed
+                available_gap = expanded_radius - fuel_outer_hot[i_h] / 2
+                if available_gap <= 0:
+                    # Closure case: Only compute for outer radius
+                    max_thickness = cladding_outer_hot[i_h]/2 - fuel_outer_hot[i_h] / 2
+                    thickness_cladding.append(max_thickness)
                 else:
                     # Calculate and append cladding thickness
                     thickness = cladding_outer_hot[i_h] / 2 - expanded_radius
                     thickness_cladding.append(thickness)
-        else:
-            # Closure case: Only compute for outer radius
-            T_now = get_temperature_at_point(h, cladding_outer_radius, T_map)
-            strain = cladding_alpha(T_now)
-            expanded_radius = cladding_outer_radius * (1 + strain)
-            cladding_outer_hot.append(2 * expanded_radius)
-            thickness = expanded_radius - cladding_inner_radius
-            thickness_cladding.append(thickness)
+
 
     return fuel_outer_hot, fuel_inner_hot, cladding_outer_hot, thickness_cladding
 
@@ -693,8 +724,11 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     # Void Formation due to Restructuring
     R_equiaxied = get_radius_at_temperature(1600, previous_T_map)
     R_columnar = get_radius_at_temperature(1800, previous_T_map)
-    R_void = get_R_void(params["Fuel_Proprieties"], R_columnar, R_equiaxied)
-    Geometrical_Data.fuel_inner_diameter = [2 * r for r in R_void]
+    R_void = get_R_void(params["Fuel_Proprieties"], R_columnar, R_equiaxied, Geometrical_Data)
+    # Consider only void if it is enlarging
+    for i_r, r in enumerate(R_void):
+        if r > Geometrical_Data.fuel_inner_diameter[i_r] / 2:
+            Geometrical_Data.fuel_inner_diameter = [2 * r for r in R_void]
 
     # Void Swelling
     void_swell, \
