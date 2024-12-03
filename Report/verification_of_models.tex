@@ -23,6 +23,12 @@ Figure~\ref{fig:thermal_hydraulics} shows the axial power profile and the comput
 \subsection{Temperature Profiles}
 Radial and axial temperature profiles were computed for the cold geometry to check if the shape of the profile made sense and if the values were reasonable.
 
+We create a temperature map of the fuel rod. For every node along the axial direction, we first compute the temperature increase in the coolant due to the heat generated in the fuel. 
+From this we compute the temperature at the coolant cladding interface usigg the heat transfer coefficient (computed by given correlations).
+For the cladding again we approximate to a linear temperature profile and compute the temperature at the cladding gas interface.
+Then for the gap and the fuel we compute several temperature points along the radius, at every step the properieties are updated to the temperature of the previous step.
+The inner void is at the same temperature as the inner surface of the fuel. \\
+
 The results provided an initial validation of the temperature distribution behavior before further analysis.
 
 Figure~\ref{fig:temperature_profile} illustrates the temperature distributions.
