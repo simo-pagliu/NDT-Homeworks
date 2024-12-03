@@ -1,0 +1,109 @@
+% Preamble file for the LaTeX report
+\documentclass[11pt,a4paper,twoside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx} % Package for including graphics
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{wrapfig}
+\usepackage{helvet}
+\usepackage{titlesec}
+\usepackage{fancyhdr} % Package for custom headers and footers
+\usepackage{caption}
+\usepackage{float}
+\usepackage{hyperref}
+
+% \renewcommand{\familydefault}{\sfdefault}
+
+% Define custom colors
+\definecolor{cherenkovblue}{RGB}{55, 139, 230}
+\definecolor{white}{RGB}{255, 255, 255}
+
+\titleformat{\title}{\color{cherenkovblue}\normalfont\huge\bfseries}{\thetitle}{1em}{}
+\titleformat{\section}{\color{cherenkovblue}\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\color{cherenkovblue}\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\paragraph}{\color{cherenkovblue}\bfseries}{\theparagraph}{1em}{}
+
+% Remove indentation
+\setlength{\parindent}{0pt}
+
+% Define box styles
+\tcbset{
+    boxstyle/.style={
+        colframe=cherenkovblue,
+        colback=white,
+        coltitle=white,
+        fonttitle=\bfseries,
+        rounded corners,
+        width=0.3\textwidth,
+        boxrule=0.75mm,
+        arc=2mm,
+        toptitle=2mm,
+        bottomtitle=2mm,
+        sharp corners=downhill
+    },
+    boxstyle2/.style={
+        colframe=cherenkovblue,
+        colback=white,
+        coltitle=white,
+        fonttitle=\bfseries,
+        rounded corners,
+        width= \textwidth,
+        boxrule=0.75mm,
+        arc=5mm,
+        toptitle=2mm,
+        bottomtitle=2mm,
+        sharp corners=downhill
+    }
+}
+
+\pagestyle{fancy}     % Activate custom header/footer style
+
+% Clear default header and footer
+\fancyhf{}
+
+% Define custom footer placement for page numbers
+\fancyfoot[LE,RO]{\thepage} % LE = Left side, Even page; RO = Right side, Odd page
+
+% Define custom header placement
+\fancyhead[LE]{\textit{Simone Pagliuca}} % Left side of even pages: Author's name
+\fancyhead[RO]{\textit{Nuclear Engineering}}    % Right side of odd pages
+
+% Set the line rules for the header and footer
+\renewcommand{\headrulewidth}{0.5pt} % Line under the header
+\renewcommand{\footrulewidth}{0.5pt} % Line above the footer
+
+% Set page style for plain pages (like chapter starts)
+\fancypagestyle{plain}{
+  \fancyhf{} % Clear default layout
+  \fancyfoot[LE,RO]{\thepage} % Keep the same layout for plain pages
+  \fancyhead[RO]{\textit{Nuclear Engineering}}    % Right side of odd pages
+  \fancyhead[LE]{\textit{Simone Pagliuca}} % Left side of even pages: Author's name 
+  \renewcommand{\headrulewidth}{0.5pt}
+  \renewcommand{\footrulewidth}{0.5pt}
+}
+
+
+\title{Preliminary Design and Verification of a Fuel Pin}
+\author{Politecnico di Milano\ Nuclear Design and Technology}
+\date{November 2024}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\input{introduction}
+\input{problem_description}
+\input{assumptions}
+\input{verification_of_models}
+\input{plenum_design}
+\input{future_work}
+
+\appendix
+\input{appendix_code}
+
+\end{document}
