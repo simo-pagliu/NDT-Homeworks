@@ -67,8 +67,8 @@
 \fancyfoot[LE,RO]{\thepage} % LE = Left side, Even page; RO = Right side, Odd page
 
 % Define custom header placement
-\fancyhead[LE]{\textit{Simone Pagliuca}} % Left side of even pages: Author's name
-\fancyhead[RO]{\textit{Nuclear Engineering}}    % Right side of odd pages
+\fancyhead[LE]{\textit{Simone Pagliuca, Tommaso Pirola, Lisa Raffuzzi, Riccardo Ronchi, Darien Shabi}} % Left side of even pages: Author's name
+\fancyhead[RO]{\textit{Nuclear Design and Technologies}}    % Right side of odd pages
 
 % Set the line rules for the header and footer
 \renewcommand{\headrulewidth}{0.5pt} % Line under the header
@@ -96,14 +96,33 @@
 \tableofcontents
 \newpage
 
-\input{introduction}
-\input{problem_description}
-\input{assumptions}
-\input{verification_of_models}
-\input{plenum_design}
-\input{future_work}
+% INTRODUCTION
+\input{./introduction/introduction} % Chat
+\input{./introduction/problem_description} % Chat
+\input{./introduction/assumptions} %
 
+% VERIFICATION
+\section{Verification of Models}
+Each function used in the analysis was tested for expected behavior.
+
+Below are the key verification steps.
+\input{./verification/thermal-hydraulics-analysis.tex} % Chat
+\input{./verification/temperature_profiles.tex} % Simo
+\input{./verification/thermal_expansion.tex} %
+\input{./verification/mechanical_analysis.tex} % Simo
+\input{./verification/void_swelling.tex} % Simo
+\input{./verification/fission_gas.tex} %
+\input{./verification/restructuring.tex} % Simo
+\input{./verification/stress_analysis.tex} %
+\input{./verification/he_embrittlement.tex} %
+
+% DESIGN
+\input{./design/plenum_design} %
+\input{./design/cladding_design} %
+
+% CONCLUSION
+\input{./conclusion/future_work} %
 \appendix
-\input{appendix_code}
+\input{./conclusion/appendix_code} %
 
 \end{document}
