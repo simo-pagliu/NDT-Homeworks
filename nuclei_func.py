@@ -38,7 +38,8 @@ def mixture(quantity, quality, normalization_cond='no_normalize'):
         if normalization_cond == 'normalize':
             quality = [q/sum(quality) for q in quality]
         elif normalization_cond == 'no_normalize':
-            print(f"\033[93mThe sum of the qualites values is not 1, default behaviour is ignoring.\033[0m")  
+            #print(f"\033[93mThe sum of the qualites values is not 1, default behaviour is ignoring.\033[0m")
+            pass
         elif normalization_cond == 'silent':
             pass
     #calculate the macroscopic cross section of the mixture

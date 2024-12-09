@@ -756,10 +756,10 @@ def main(thickness_cladding, h_plenum):
         "hot_run": True,
         "residual_threshold": 1e-6,
     }
-    print("Parameters initialized.")
+    #print("Parameters initialized.")
 
     Burnup = compute_burnup(params)
-    print("Burnup:", Burnup)
+    #print("Burnup:", Burnup)
 
     # Initial values
     T_fuel_out = 1000  # K (Initial guess)
@@ -789,8 +789,8 @@ def main(thickness_cladding, h_plenum):
             previous_T_map = copy.deepcopy(T_map)
 
             Closure = check_gap_closure(Geometrical_Data)
-            if Closure:
-                print("Gap Closure Detected")
+            #if Closure:
+                #print("Gap Closure Detected")
 
     else:
         T_map = previous_T_map
