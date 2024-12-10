@@ -401,20 +401,9 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         r_cladding_gap = r_coolant_cladding - geom_data.thickness_cladding[idx_h]
         r_gap_fuel = geom_data.fuel_outer_diameter[idx_h] / 2
 
-        # Check gap size
-        current_gap_size = r_cladding_gap - r_gap_fuel
-
-        # Compute the average temperature in the cladding region
-        idx_start = np.argmin(np.abs(T_map.r[idx_h, :] - r_coolant_cladding))
-        idx_end = np.argmin(np.abs(T_map.r[idx_h, :] - r_cladding_gap))
-        r_vals = T_map.r[idx_h, idx_start:idx_end]
-
         # Compute average temperature in this region
-        if len(r_vals) == 0:
-            temperature_avg = get_temperature_at_point(h, r_cladding_gap, T_map)
-        else:
-            temperature = [get_temperature_at_point(h, r, T_map) for r in r_vals]
-            temperature_avg = np.mean(temperature)
+        avg_r = (r_cladding_gap + r_gap_fuel)/2
+        temperature_avg = get_temperature_at_point(h, avg_r, T_map)
 
         # Compute void swelling based on the temperature and neutron flux
         phi = power_profile(h, thermo_hyd_spec, value='neutron_flux') * thermo_hyd_spec.uptime
@@ -424,6 +413,7 @@ def void_swelling(T_map, geom_data, thermo_hyd_spec):
         if void_swelling_fraction < 0:
             void_swelling_fraction = 0  # Ensure swelling is non-negative
         Volume_expansion_fission_gas.append(void_swelling_fraction)
+        # void_swelling_fraction = 0
 
         # Compute new cladding geometry due to swelling
         outer_r_before = geom_data.cladding_outer_diameter[idx_h] / 2
@@ -469,89 +459,87 @@ def get_R_void(Fuel_Proprieties, R_col, R_eq, Geometry_Data):
 # Thermal Expansion
 ##################################################
 def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
-    # Initialize
-    h_vals = cold_geometrical_data.h_values
+    """
+    Computes the thermal expansion of fuel and cladding along the height of the system.
+
+    Parameters:
+    - fuel: Object containing fuel properties, including Thermal_Expansion_Coeff.
+    - cladding: Object containing cladding properties, including Thermal_Expansion_Coeff.
+    - cold_geometrical_data: Object containing cold geometry data such as diameters and cladding thickness.
+    - T_map: A map or function to retrieve temperature at a given point.
+    - geom_data: Additional geometry-related data.
+
+    Returns:
+    - fuel_outer_hot: List of expanded outer diameters for the fuel.
+    - fuel_inner_hot: List of expanded inner diameters for the fuel.
+    - cladding_outer_hot: List of expanded outer diameters for the cladding.
+    - thickness_cladding: List of updated cladding thickness values.
+    """
+    # Constants
+    T_0 = 298.15  # Reference temperature (25 °C in Kelvin)
     
-    #### Fuel ####
-    # Initialize
-    fuel_inner_hot = []
+    # Initialize results
     fuel_outer_hot = []
-    # Reference Temperatrue
-    T_0 = 25 + 273.15
-    # Calculate for fuel
-    fuel_alpha = fuel.Thermal_Expansion_Coeff
-
-    # Compute along the height
-    for i_h, h in enumerate(h_vals):
-        # Starting values
-        fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
-        fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
-
-        # Average radius and temperature in the middle of the fuel
-        avg_radius = (fuel_outer + fuel_inner) / 2
-        T_now = get_temperature_at_point(h, avg_radius, T_map)
-
-        # Outer radius
-        r_out_expanded = fuel_outer * (1 + fuel_alpha * (T_now - T_0))
-        fuel_outer_hot.append(2*r_out_expanded)
-        
-        # Inner radius
-        r_in_expanded =  fuel_inner * (1 + fuel_alpha * (T_now - T_0))
-        fuel_inner_hot.append(2*r_in_expanded)
-
-    #### Cladding ####
-    # Initialize
-    thickness_cladding = []
+    fuel_inner_hot = []
     cladding_outer_hot = []
-    # Expansion coefficient
+    thickness_cladding = []
+
+    # Expansion coefficients
+    fuel_alpha = fuel.Thermal_Expansion_Coeff
     cladding_alpha = cladding.Thermal_Expansion_Coeff
 
-    # Compute along the height
-    for i_h, h in enumerate(h_vals):
-        # Cladding Outer Cold Geometry
-        cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
-        cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
+    # Iterate through height values
+    for i_h, h in enumerate(cold_geometrical_data.h_values):
+        # Starting Dimensions
+        fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
+        fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
+        avg_radius_fuel = (fuel_outer + fuel_inner) / 2
+        cladding_outer = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
+        cladding_inner = cladding_outer - cold_geometrical_data.thickness_cladding[i_h]
+        avg_radius_cladding = (cladding_outer + cladding_inner) / 2
 
-        # Compute along the radius for both outer and inner cladding
-        for r, is_outer in [(cladding_outer_radius, True), (cladding_inner_radius, False)]:
-            T_now = get_temperature_at_point(h, r, T_map)
-            strain = cladding_alpha(T_now)
-            expanded_radius = r * (1 + strain)
+        # Temperature at average radii
+        T_fuel_0 = get_temperature_at_point(fuel_inner, avg_radius_fuel, T_map)
+        T_fuel_E = get_temperature_at_point(fuel_outer, avg_radius_fuel, T_map)
+        T_fuel = (T_fuel_0 + T_fuel_E) / 2
+        T_cladding = get_temperature_at_point(h, avg_radius_cladding, T_map)
 
-            if is_outer:
-                # Append expanded outer radius
-                cladding_outer_hot.append(2 * expanded_radius)
-            else:               
-                # Check if gap is not closed
-                available_gap = expanded_radius - fuel_outer_hot[i_h] / 2
-                if available_gap <= 0:
-                    # Closure case: Only compute for outer radius
-                    max_thickness = cladding_outer_hot[i_h]/2 - fuel_outer_hot[i_h] / 2
-                    thickness_cladding.append(max_thickness)
-                else:
-                    # Calculate and append cladding thickness
-                    thickness = cladding_outer_hot[i_h] / 2 - expanded_radius
-                    thickness_cladding.append(thickness)
+        # Calculate expanded fuel inner radius
+        fuel_inner_expanded = fuel_inner * (1 + fuel_alpha * (T_fuel - T_0))
+        fuel_inner_hot.append(2 * fuel_inner_expanded)
 
+        # Calculate expanded fuel dimensions
+        fuel_outer_expanded = fuel_outer * (1 + fuel_alpha * (T_fuel - T_0))
+        fuel_outer_hot.append(2 * fuel_outer_expanded)
 
+        # Calculate expanded cladding outer radius
+        cladding_outer_expanded = cladding_outer * (1 + cladding_alpha(T_cladding))
+        cladding_outer_hot.append(2 * cladding_outer_expanded)
+
+        # Calculate expanded cladding inner radius
+        cladding_inner_expanded = cladding_inner * (1 + cladding_alpha(T_cladding))
+
+        # Update possible conflicting dimensions:
+        # Fuel outer diameter and Cladding inner diameter
+        available_gap = cladding_inner_expanded - fuel_outer_expanded
+        if available_gap <= 0:
+            max_thickness = cladding_outer_expanded - fuel_outer_expanded
+            thickness_cladding.append(max_thickness)
+        else:
+            # Compute cladding thickness normally
+            thickness_cladding.append(cladding_outer_expanded - cladding_inner_expanded)
+        
     return fuel_outer_hot, fuel_inner_hot, cladding_outer_hot, thickness_cladding
+
 
 ##################################################
 # Fission Gas Production
 ##################################################
-# Size of bubble radius
-a = 10e-6  # m
-
-# Fission yield
-fission_yield = 0.3
-
-# Diffusivity evaluation parameters [Matzke, 1980]
-d_0 = 5e-8  # m^2/s
-q = 40262
-
 def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometrical_Data, T_map):
-    d_0 = 5e-8  # m^2/s
-    q = 40262
+    d_0 = 5e-8 # Parameter for diffusivity evaluation
+    q = 40262 # Parameter for diffusivity evaluation
+    fission_yield = 0.3 # Fission yield 
+    a = 10e-6  # Size of bubble radius [m]
     """
     Function to compute the rate theory fission gas calculations and generate relevant plots.
     Outputs:
@@ -670,15 +658,6 @@ def compute_burnup(params):
     Burnup = Burnup * 1e-6  # Wd/kgU * 1e-9/1e-3 --> GWd/t(HM)
     return Burnup
 
-def check_gap_closure(Geometrical_Data):
-    Closure = False
-    for i_h in range(len(Geometrical_Data.h_values)):
-        r_cladding_gap = Geometrical_Data.cladding_outer_diameter[i_h] / 2 - Geometrical_Data.thickness_cladding[i_h]
-        r_gap_fuel = Geometrical_Data.fuel_outer_diameter[i_h] / 2
-        if r_gap_fuel >= r_cladding_gap:
-            Closure = True
-    return Closure
-
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
     Update temperature map and geometrical data.
@@ -731,7 +710,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
 def main(delta, h_plenum):
     settings = {
         "hot_run": True,
-        "residual_threshold": 1e-6,
+        "residual_threshold": 1e-3,
     }
 
     # Initial values
@@ -880,10 +859,6 @@ def main(delta, h_plenum):
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
-
-            Closure = check_gap_closure(Geometrical_Data)
-            #if Closure:
-                #print("Gap Closure Detected")
 
     else:
         T_map = previous_T_map
