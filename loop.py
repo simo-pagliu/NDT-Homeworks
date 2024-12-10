@@ -641,28 +641,6 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
 ##################################################
 # Main Function
 ##################################################
-def initialize_params():
-    """
-    Initialization function to set up parameters.
-    
-    Returns:
-        dict: Dictionary containing initialized parameters.
-    """
-    # Load all objects in a single line using dill
-    with open("data_file.dill", "rb") as file:
-        data_objects = dill.load(file)
-
-    params = {
-        "Cladding_Proprieties": data_objects["Cladding_Proprieties"],
-        "Fuel_Proprieties": data_objects["Fuel_Proprieties"],
-        "Coolant_Proprieties": data_objects["Coolant_Proprieties"],
-        "Helium_Proprieties": data_objects["Helium_Proprieties"],
-        "ThermoHydraulics": data_objects["ThermoHydraulics"],
-        "Geometrical_Data_Cold": data_objects["Geometrical_Data"],
-        "Geometrical_Data": data_objects["Geometrical_Data"],
-    }
-    return params
-
 def compute_burnup(params):
     """
     Compute the burnup value.
