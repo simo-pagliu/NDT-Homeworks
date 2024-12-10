@@ -1,100 +1,99 @@
-% Preamble file for the LaTeX report
 \documentclass[11pt,a4paper,twoside]{article}
+
+% Input encoding and basic packages
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath, amssymb}
-\usepackage{graphicx} % Package for including graphics
+\usepackage{graphicx}
 \usepackage{tcolorbox}
 \usepackage{xcolor}
 \usepackage{geometry}
 \usepackage{wrapfig}
-\usepackage{helvet}
 \usepackage{titlesec}
-\usepackage{fancyhdr} % Package for custom headers and footers
+\usepackage{fancyhdr}
 \usepackage{caption}
 \usepackage{float}
 \usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{fontspec}
+\usepackage{nomencl} 
+\usepackage{multicol}
+\usepackage{etoolbox}
+\usepackage{sectsty} % Allows custom section styles
+\usepackage{helvet}  % Default sans-serif font
+\usepackage{times}   % Example serif font for body text
 
-% \renewcommand{\familydefault}{\sfdefault}
+% Define custom fonts
+\setmainfont{Poppins} % Main font for body text
+\newfontfamily\titlesfont{Anonymous Pro} % Font for titles
+
+% Relax Latex rules for text layout
+\raggedbottom
+\sloppy
+\hbadness=10000
+
 
 % Define custom colors
 \definecolor{cherenkovblue}{RGB}{55, 139, 230}
-\definecolor{white}{RGB}{255, 255, 255}
 
-\titleformat{\title}{\color{cherenkovblue}\normalfont\huge\bfseries}{\thetitle}{1em}{}
-\titleformat{\section}{\color{cherenkovblue}\normalfont\Large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\color{cherenkovblue}\normalfont\large\bfseries}{\thesubsection}{1em}{}
-\titleformat{\paragraph}{\color{cherenkovblue}\bfseries}{\theparagraph}{1em}{}
+% Adjust default font sizes (Explicitly set sizes)
+\renewcommand{\normalsize}{\fontsize{9}{11}\selectfont} % Smaller body text: 9pt font with 11pt line spacing
+\renewcommand{\small}{\fontsize{8}{10}\selectfont}
+\renewcommand{\footnotesize}{\fontsize{7}{9}\selectfont}
 
-% Remove indentation
-\setlength{\parindent}{0pt}
+% Make titles all caps
+\makeatletter
+\let\oldsection\section
+\renewcommand{\section}{\@startsection {section}{1}{\z@}%
+  {-3.5ex \@plus -1ex \@minus -.2ex}%
+  {2.3ex \@plus.2ex}%
+  {\titlesfont\fontsize{14}{16}\bfseries\color{cherenkovblue}\MakeUppercase}}
+\makeatother
 
-% Define box styles
-\tcbset{
-    boxstyle/.style={
-        colframe=cherenkovblue,
-        colback=white,
-        coltitle=white,
-        fonttitle=\bfseries,
-        rounded corners,
-        width=0.3\textwidth,
-        boxrule=0.75mm,
-        arc=2mm,
-        toptitle=2mm,
-        bottomtitle=2mm,
-        sharp corners=downhill
-    },
-    boxstyle2/.style={
-        colframe=cherenkovblue,
-        colback=white,
-        coltitle=white,
-        fonttitle=\bfseries,
-        rounded corners,
-        width= \textwidth,
-        boxrule=0.75mm,
-        arc=5mm,
-        toptitle=2mm,
-        bottomtitle=2mm,
-        sharp corners=downhill
-    }
-}
+% Custom subsection font
+\subsectionfont{\titlesfont\fontsize{12}{14}\bfseries\color{cherenkovblue}} % Subsection: 12pt font, bold, blue
 
-\pagestyle{fancy}     % Activate custom header/footer style
+% Customize spacing
+\setlength{\parskip}{6pt} % Add spacing between paragraphs
+\setlength{\parindent}{0pt} % Remove paragraph indentation
+\setlength{\itemsep}{4pt} % Add spacing between list items
 
-% Clear default header and footer
-\fancyhf{}
+% Customize itemize bullets
+\renewcommand\labelitemi{--} % Use dashes instead of bullets
 
-% Define custom footer placement for page numbers
-\fancyfoot[LE,RO]{\thepage} % LE = Left side, Even page; RO = Right side, Odd page
-
-% Define custom header placement
-\fancyhead[LE]{\textit{Simone Pagliuca, Tommaso Pirola, Lisa Raffuzzi, Riccardo Ronchi, Darien Shabi}} % Left side of even pages: Author's name
-\fancyhead[RO]{\textit{Nuclear Design and Technologies}}    % Right side of odd pages
-
-% Set the line rules for the header and footer
-\renewcommand{\headrulewidth}{0.5pt} % Line under the header
-\renewcommand{\footrulewidth}{0.5pt} % Line above the footer
-
-% Set page style for plain pages (like chapter starts)
+% Define fancy header and footer
 \fancypagestyle{plain}{
-  \fancyhf{} % Clear default layout
-  \fancyfoot[LE,RO]{\thepage} % Keep the same layout for plain pages
-  \fancyhead[RO]{\textit{Nuclear Engineering}}    % Right side of odd pages
-  \fancyhead[LE]{\textit{Simone Pagliuca}} % Left side of even pages: Author's name 
-  \renewcommand{\headrulewidth}{0.5pt}
-  \renewcommand{\footrulewidth}{0.5pt}
+    \fancyhf{} % Clear all header and footer fields
+} % Default plain style for title and index pages
+
+\fancypagestyle{post-index}{
+    \fancyhf{} % Clear all header and footer fields
+    \fancyhead[LE]{\textit{Simone Pagliuca}}
+    \fancyhead[RO]{\textit{Genetic Algorithm}}
+    \fancyfoot[LE,RO]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+    \setlength{\headheight}{14pt}
 }
-
-
-\title{Preliminary Design and Verification of a Fuel Pin}
-\author{Politecnico di Milano\ Nuclear Design and Technology}
-\date{November 2024}
 
 \begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% First page
+% Includes title, author, abstract, keywords, nomenclature
+\input{title_page.tex}
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\maketitle
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Table of contents
+% it then switches to the post-index page style
 \tableofcontents
 \newpage
+\pagestyle{post-index}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Content
+% Add files for content here
 
 % INTRODUCTION
 \input{./introduction/introduction} % Chat
@@ -123,5 +122,5 @@ Below are the key verification steps.
 \input{./conclusion/future_work} %
 \appendix
 \input{./conclusion/appendix_code} %
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
