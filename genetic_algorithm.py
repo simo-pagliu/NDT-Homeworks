@@ -56,22 +56,30 @@ def fitness_func(thickness_cladding, plenum_height):
 
         Fuel_limit = 2600 + 273.15
         Cladding_limit = 650 + 273.15
-        Plenum_Pressure_limit = 5e6
+
+        Fitness_Function = Max_Fuel_Temperature
+
+        fitness_handicap = 1e3
+        fitness_handicap_if_fails = 1e5
+
         Maximum_Cladding_Volumetric_Swelling_limit = 3
+        if Maximum_Cladding_Volumetric_Swelling > Maximum_Cladding_Volumetric_Swelling_limit:
+            Fitness_Function += fitness_handicap
+
         Maximum_Coolant_Velocity_limit = 8
-        Fitness_Function =  (Max_Fuel_Temperature - Fuel_limit)/(Fuel_limit) + \
-                            (Max_Cladding -Cladding_limit)/Cladding_limit + \
-                            (Maximum_Cladding_Volumetric_Swelling - Maximum_Cladding_Volumetric_Swelling_limit)/Maximum_Cladding_Volumetric_Swelling_limit + \
-                            (Maximum_Coolant_Velocity - Maximum_Coolant_Velocity_limit)/Maximum_Coolant_Velocity_limit
+        if Maximum_Coolant_Velocity > Maximum_Coolant_Velocity_limit:
+            Fitness_Function += fitness_handicap
+
+        Plenum_Pressure_limit = 5e6
         if Plenum_Pressure > Plenum_Pressure_limit:
-            Fitness_Function = 100
+            Fitness_Function += fitness_handicap
     except:
-        Fitness_Function = 100
+        Fitness_Function = fitness_handicap_if_fails
     return Fitness_Function
 
 limit_x_low = 20e-6 # Cladding Thickness lower limit
 limit_x = 500e-6 # Cladding Thickness upper limit
-limit_y = 2 # Plenum Height upper limit
+limit_y = 1.2 # Plenum Height upper limit
 ################################################################################
 
 ################################################################################
@@ -402,19 +410,23 @@ def run_ga(params):
 if __name__ == "__main__": 
     loop_iterations = 1
     initial_population_size = 150  # Initialize a population
-    max_iterations = 20
-    crossover_prob = 0.2
+    max_iterations = 1
+    crossover_prob = 0.6
     mutation_prob = 0.6
     tournament_frac = 0.2
     selection = tournament_selection  # Replace with your selection function # Options: tournament_selection, roulette_selection
-    crossover = punnet_crossover  # Replace with your crossover function # Options: punnet_crossover, bit_crossover
+    crossover = bit_crossover  # Replace with your crossover function # Options: punnet_crossover, bit_crossover
     mutation = redefine_mutation  # Replace with your mutation function # Options: redefine_mutation, bit_mutation
 
     # Run GA with or without population division
     for i in range(loop_iterations):
+        print(f"Iter: {i+1}/{loop_iterations}")
+        tic = time.time()
         final_population = GA_loop(
             max_iterations, initial_population_size, crossover_prob, mutation_prob, tournament_frac,
             selection, crossover, mutation,
             plot_enabled=False, load_previous=False, save_enabled=False, print_result=False, log = True
         )  
+        toc = time.time()
+        print(f"Elapsed time: {toc - tic} seconds")
 ################################################################################
