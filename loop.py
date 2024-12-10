@@ -275,15 +275,7 @@ def thermal_resistance_fuel(Burnup, fuel, temperature):
 ##################################################
 # Temperature Map
 ##################################################
-def temperature_map(params, T_fuel_out, Burnup, He_percentage):
-    fuel = params["Fuel_Proprieties"]
-    cladding =params["Cladding_Proprieties"]
-    coolant = params["Coolant_Proprieties"]
-    gap = params["Helium_Proprieties"]
-    thermo_hyd_spec = params["ThermoHydraulics"]
-    geom_data = params["Geometrical_Data_Cold"]
-    geom_data = params["Geometrical_Data"]
-
+def temperature_map(fuel, cladding, coolant, gap, thermo_hyd_spec, geom_data, T_fuel_out, Burnup, He_percentage):
     h_values = geom_data.h_values
 
     # Compute the height of each slice
@@ -465,7 +457,7 @@ def get_R_void(Fuel_Proprieties, R_col, R_eq, Geometry_Data):
 ##################################################
 # Thermal Expansion
 ##################################################
-def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
+def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map):
     """
     Computes the thermal expansion of fuel and cladding along the height of the system.
 
@@ -538,7 +530,6 @@ def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
         
     return fuel_outer_hot, fuel_inner_hot, cladding_outer_hot, thickness_cladding
 
-
 ##################################################
 # Fission Gas Production
 ##################################################
@@ -562,7 +553,6 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     macro_pu = nf.macro(Fuel_Proprieties.Micro_Fission[3], Fuel_Proprieties.Density, molar_mass)  # cm^-1
 
     fission_xs = nf.mixture([macro_235, macro_238, 0, macro_pu], Fuel_Proprieties.Qualities, normalization_cond='normalize')  # cm^-1
-
     # Compute average neutron flux
     # power profile
     q_values = [power_profile(h, ThermoHydraulics) for h in Geometrical_Data.h_values]
@@ -636,7 +626,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
 ##################################################
 # Main Function
 ##################################################
-def compute_burnup(params):
+def compute_burnup(Geometrical_Data_Cold, Fuel_Proprieties, ThermoHydraulics):
     """
     Compute the burnup value.
     
@@ -646,9 +636,6 @@ def compute_burnup(params):
     Returns:
         float: Computed burnup value.
     """
-    Geometrical_Data_Cold = params["Geometrical_Data_Cold"]
-    Fuel_Proprieties = params["Fuel_Proprieties"]
-    ThermoHydraulics = params["ThermoHydraulics"]
 
     MOX_volume = np.pi * (Geometrical_Data_Cold.fuel_outer_diameter[0]/2)**2 * Geometrical_Data_Cold.h_values[-1]
     MOX_mass = MOX_volume * Fuel_Proprieties.Density * 1000
@@ -665,7 +652,7 @@ def compute_burnup(params):
     Burnup = Burnup * 1e-6  # Wd/kgU * 1e-9/1e-3 --> GWd/t(HM)
     return Burnup
 
-def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
+def update_temperatures(Fuel_Proprieties, Cladding_Proprieties, Geometrical_Data_Cold, ThermoHydraulics, Coolant_Proprieties, Helium_Proprieties, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
     Update temperature map and geometrical data.
     
@@ -683,46 +670,39 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     Geometrical_Data.fuel_outer_diameter, \
     Geometrical_Data.fuel_inner_diameter, \
     Geometrical_Data.cladding_outer_diameter, \
-    Geometrical_Data.thickness_cladding = thermal_expansion(params["Fuel_Proprieties"], params["Cladding_Proprieties"], params["Geometrical_Data_Cold"], previous_T_map, Geometrical_Data)
+    Geometrical_Data.thickness_cladding = thermal_expansion(Fuel_Proprieties, Cladding_Proprieties, Geometrical_Data_Cold, previous_T_map)
+    print(f"Cladding thick post thermal expansion: {Geometrical_Data.thickness_cladding}")
     
     # Void Formation due to Restructuring
     R_equiaxied = get_radius_at_temperature(1600, previous_T_map)
     R_columnar = get_radius_at_temperature(1800, previous_T_map)
-    R_void = get_R_void(params["Fuel_Proprieties"], R_columnar, R_equiaxied, Geometrical_Data)
+    R_void = get_R_void(Fuel_Proprieties, R_columnar, R_equiaxied, Geometrical_Data)
     # Consider only void if it is enlarging
     for i_r, r in enumerate(R_void):
         if r > Geometrical_Data.fuel_inner_diameter[i_r] / 2:
             Geometrical_Data.fuel_inner_diameter = [2 * r for r in R_void]
+    print(f"Cladding thick post void formation: {Geometrical_Data.thickness_cladding}")
 
     # Void Swelling
     void_swell, \
     Geometrical_Data.cladding_outer_diameter, \
-    Geometrical_Data.thickness_cladding = void_swelling(previous_T_map, params["Geometrical_Data_Cold"], params["ThermoHydraulics"])
+    Geometrical_Data.thickness_cladding = void_swelling(previous_T_map, Geometrical_Data_Cold, ThermoHydraulics)
+    print(f"Cladding thick post void swelling: {Geometrical_Data.thickness_cladding}")
 
     # Fission Gas Production
-    He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
+    He_percentage, Gas_Pressure = fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometrical_Data, previous_T_map)
+    print(f"Cladding thick post fission gas production: {Geometrical_Data.thickness_cladding}")
 
     # Temperature Map
-    T_map, Coolant_Velocity = temperature_map(params, T_fuel_out, Burnup, He_percentage)
+    T_map, Coolant_Velocity = temperature_map(Fuel_Proprieties, Cladding_Proprieties, Coolant_Proprieties, Helium_Proprieties, ThermoHydraulics, Geometrical_Data, T_fuel_out, Burnup, He_percentage)
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
+    print(f"Cladding thick post temperature map: {Geometrical_Data.thickness_cladding}")
 
     return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell
-
-
-
     ############################################################################
 
-def main(delta, h_plenum):
-    settings = {
-        "hot_run": True,
-        "residual_threshold": 1e-6,
-    }
-
-    # Initial values
-    T_fuel_out = 1000  # K (Initial guess)
-    He_percentage = 1  # Initial Value
-
+def initialize(delta):
     # Material: Cladding
     # 15-15, Ti stabilized, cold worked stainless steel
     Cladding_Proprieties = Material_Proprieties(
@@ -807,19 +787,7 @@ def main(delta, h_plenum):
         cladding_roughness = 1e-6 # m
     )
 
-    Geometrical_Data_Cold = GeometryData(
-        Initial_Gas_Temperature=20 + 273,  # K
-        Initial_Gas_Pressure=1e5,  # Pa
-        fuel_outer_diameter=[5.42 * 1e-3]*len_h,  # m - GIVEN
-        fuel_inner_diameter=[0.00 * 1e-3]*len_h,  # m
-        cladding_outer_diameter=[6.55 * 1e-3]*len_h,  # m - GIVEN
-        thickness_cladding=[delta]*len_h, # m
-        pin_pitch=8.275 * 1e-3,  # m
-        h_values = np.linspace(0, 0.85, len_h), # m
-        fuel_pellet_height = 7e-3, # m
-        fuel_roughness = 2e-6, # m
-        cladding_roughness = 1e-6 # m
-    )
+    Geometrical_Data_Cold = copy.deepcopy(Geometrical_Data)
 
     # Example of initializing Thermo-Hydraulic specifications
     heights_of_slice_centre = [42.5, 127.5, 212.5, 297.5, 382.5, 467.5, 552.5, 637.5, 722.5, 807.5] # mm
@@ -834,39 +802,55 @@ def main(delta, h_plenum):
         neutron_flux_peak = 6.1e15  # Neutron Flux (> 100 keV) (10^15 n cm^-2 s^-1) at Peak Power Node    
     )
 
-    params = {
-        "Fuel_Proprieties": Fuel_Proprieties,
-        "Cladding_Proprieties": Cladding_Proprieties,
-        "Coolant_Proprieties": Coolant_Proprieties,
-        "Helium_Proprieties": Helium_Proprieties,
-        "ThermoHydraulics": ThermoHydraulics,
-        "Geometrical_Data_Cold": Geometrical_Data_Cold,
-        "Geometrical_Data": Geometrical_Data
+    return Cladding_Proprieties, Fuel_Proprieties, Coolant_Proprieties, Helium_Proprieties, Geometrical_Data, Geometrical_Data_Cold, ThermoHydraulics
+
+def main(delta, h_plenum):
+    settings = {
+        "hot_run": True,
+        "residual_threshold": 1e-2,
     }
+
+    # Initial values
+    T_fuel_out = 1000  # K (Initial guess)
+    He_percentage = 1  # Initial Value
 
     residual = 1  # Placeholder for residual
     j = 0
 
-    Burnup = compute_burnup(params)
+    Cladding_Proprieties, Fuel_Proprieties, Coolant_Proprieties, Helium_Proprieties, Geometrical_Data, Geometrical_Data_Cold, ThermoHydraulics = initialize(delta)
+
+    Burnup = compute_burnup(Geometrical_Data_Cold, Fuel_Proprieties, ThermoHydraulics)
     #print("Burnup:", Burnup)
 
     # Initial temperature map computed on cold geometrical data
-    previous_T_map, _ = temperature_map(params, T_fuel_out, Burnup, He_percentage)
+    previous_T_map, _ = temperature_map(Fuel_Proprieties, Cladding_Proprieties, Coolant_Proprieties, Helium_Proprieties, ThermoHydraulics, Geometrical_Data, T_fuel_out, Burnup, He_percentage)
     
     ############################################################################
     # ITERATIVE LOOP
+    def check_closure():
+        for i_h in range(len(Geometrical_Data.fuel_outer_diameter)):
+            fuel_outer = Geometrical_Data.fuel_outer_diameter[i_h] / 2
+            cladding_outer = Geometrical_Data.cladding_outer_diameter[i_h] / 2
+            cladding_inner = cladding_outer - Geometrical_Data.thickness_cladding[i_h]
+            gap = cladding_inner - fuel_outer
+            if gap <=0:
+                return True
+            
+        return False
+    Closure = False
     if settings["hot_run"]:
-        Closure = False
-        while residual > settings["residual_threshold"] and Closure == False:
+        while residual > settings["residual_threshold"] and Closure == False and j < 10:
             j += 1
 
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
-
+            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = \
+                update_temperatures(Fuel_Proprieties, Cladding_Proprieties, Geometrical_Data_Cold, ThermoHydraulics, Coolant_Proprieties, Helium_Proprieties, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
+
+            Closure = check_closure()
 
     else:
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
 
-    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit
+    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Burnup, coolant_infinity_limit
