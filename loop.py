@@ -468,72 +468,76 @@ def get_R_void(Fuel_Proprieties, R_col, R_eq, Geometry_Data):
 ##################################################
 # Thermal Expansion
 ##################################################
-def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map, geom_data):
-    # Initialize
-    h_vals = cold_geometrical_data.h_values
+def thermal_expansion(fuel, cladding, cold_geometrical_data, T_map):
+    """
+    Computes the thermal expansion of fuel and cladding along the height of the system.
+
+    Parameters:
+    - fuel: Object containing fuel properties, including Thermal_Expansion_Coeff.
+    - cladding: Object containing cladding properties, including Thermal_Expansion_Coeff.
+    - cold_geometrical_data: Object containing cold geometry data such as diameters and cladding thickness.
+    - T_map: A map or function to retrieve temperature at a given point.
+    - geom_data: Additional geometry-related data.
+
+    Returns:
+    - fuel_outer_hot: List of expanded outer diameters for the fuel.
+    - fuel_inner_hot: List of expanded inner diameters for the fuel.
+    - cladding_outer_hot: List of expanded outer diameters for the cladding.
+    - thickness_cladding: List of updated cladding thickness values.
+    """
+    # Constants
+    T_0 = 298.15  # Reference temperature (25 °C in Kelvin)
     
-    #### Fuel ####
-    # Initialize
-    fuel_inner_hot = []
+    # Initialize results
     fuel_outer_hot = []
-    # Reference Temperatrue
-    T_0 = 25 + 273.15
-    # Calculate for fuel
-    fuel_alpha = fuel.Thermal_Expansion_Coeff
-
-    # Compute along the height
-    for i_h, h in enumerate(h_vals):
-        # Starting values
-        fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
-        fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
-
-        # Average radius and temperature in the middle of the fuel
-        avg_radius = (fuel_outer + fuel_inner) / 2
-        T_now = get_temperature_at_point(h, avg_radius, T_map)
-
-        # Outer radius
-        r_out_expanded = fuel_outer * (1 + fuel_alpha * (T_now - T_0))
-        fuel_outer_hot.append(2*r_out_expanded)
-        
-        # Inner radius
-        r_in_expanded =  fuel_inner * (1 + fuel_alpha * (T_now - T_0))
-        fuel_inner_hot.append(2*r_in_expanded)
-
-    #### Cladding ####
-    # Initialize
-    thickness_cladding = []
+    fuel_inner_hot = []
     cladding_outer_hot = []
-    # Expansion coefficient
+    thickness_cladding = []
+
+    # Expansion coefficients
+    fuel_alpha = fuel.Thermal_Expansion_Coeff
     cladding_alpha = cladding.Thermal_Expansion_Coeff
 
-    # Compute along the height
-    for i_h, h in enumerate(h_vals):
-        # Cladding Outer Cold Geometry
-        cladding_outer_radius = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
-        cladding_inner_radius = cladding_outer_radius - cold_geometrical_data.thickness_cladding[i_h]
+    # Iterate through height values
+    for i_h, h in enumerate(cold_geometrical_data.h_values):
+        # Starting Dimensions
+        fuel_outer = cold_geometrical_data.fuel_outer_diameter[i_h] / 2
+        fuel_inner = cold_geometrical_data.fuel_inner_diameter[i_h] / 2
+        cladding_outer = cold_geometrical_data.cladding_outer_diameter[i_h] / 2
+        cladding_inner = cladding_outer - cold_geometrical_data.thickness_cladding[i_h]
+        avg_radius_cladding = (cladding_outer + cladding_inner) / 2
 
-        # Compute along the radius for both outer and inner cladding
-        for r, is_outer in [(cladding_outer_radius, True), (cladding_inner_radius, False)]:
-            T_now = get_temperature_at_point(h, r, T_map)
-            strain = cladding_alpha(T_now)
-            expanded_radius = r * (1 + strain)
+        # Temperature at average radii
+        T_fuel_0 = get_temperature_at_point(h, fuel_inner, T_map)
+        T_fuel_E = get_temperature_at_point(h, fuel_outer, T_map)
+        T_fuel = (T_fuel_0 + T_fuel_E) / 2
+        T_cladding = get_temperature_at_point(h, avg_radius_cladding, T_map)
 
-            if is_outer:
-                # Append expanded outer radius
-                cladding_outer_hot.append(2 * expanded_radius)
-            else:               
-                # Check if gap is not closed
-                available_gap = expanded_radius - fuel_outer_hot[i_h] / 2
-                if available_gap <= 0:
-                    # Closure case: Only compute for outer radius
-                    max_thickness = cladding_outer_hot[i_h]/2 - fuel_outer_hot[i_h] / 2
-                    thickness_cladding.append(max_thickness)
-                else:
-                    # Calculate and append cladding thickness
-                    thickness = cladding_outer_hot[i_h] / 2 - expanded_radius
-                    thickness_cladding.append(thickness)
+        # Calculate expanded fuel inner radius
+        fuel_inner_expanded = fuel_inner * (1 + fuel_alpha * (T_fuel - T_0))
+        fuel_inner_hot.append(2 * fuel_inner_expanded)
 
+        # Calculate expanded fuel dimensions
+        fuel_outer_expanded = fuel_outer * (1 + fuel_alpha * (T_fuel - T_0))
+        fuel_outer_hot.append(2 * fuel_outer_expanded)
 
+        # Calculate expanded cladding outer radius
+        cladding_outer_expanded = cladding_outer * (1 + cladding_alpha(T_cladding))
+        cladding_outer_hot.append(2 * cladding_outer_expanded)
+
+        # Calculate expanded cladding inner radius
+        cladding_inner_expanded = cladding_inner * (1 + cladding_alpha(T_cladding))
+
+        # Update possible conflicting dimensions:
+        # Fuel outer diameter and Cladding inner diameter
+        available_gap = cladding_inner_expanded - fuel_outer_expanded
+        if available_gap <= 0:
+            max_thickness = cladding_outer_expanded - fuel_outer_expanded
+            thickness_cladding.append(max_thickness)
+        else:
+            # Compute cladding thickness normally
+            thickness_cladding.append(cladding_outer_expanded - cladding_inner_expanded)
+        
     return fuel_outer_hot, fuel_inner_hot, cladding_outer_hot, thickness_cladding
 
 ##################################################
@@ -814,7 +818,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     Geometrical_Data.fuel_outer_diameter, \
     Geometrical_Data.fuel_inner_diameter, \
     Geometrical_Data.cladding_outer_diameter, \
-    Geometrical_Data.thickness_cladding = thermal_expansion(params["Fuel_Proprieties"], params["Cladding_Proprieties"], params["Geometrical_Data_Cold"], previous_T_map, Geometrical_Data)
+    Geometrical_Data.thickness_cladding = thermal_expansion(params["Fuel_Proprieties"], params["Cladding_Proprieties"], params["Geometrical_Data_Cold"], previous_T_map)
     
     # Void Formation due to Restructuring
     R_equiaxied = get_radius_at_temperature(1600, previous_T_map)
