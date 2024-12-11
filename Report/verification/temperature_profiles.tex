@@ -2,18 +2,25 @@
 Radial and axial temperature profiles were computed for the cold geometry to check if the shape of the profile made sense and if the values were reasonable.
 
 We create a temperature map of the fuel rod. For every node along the axial direction, we first compute the temperature increase in the coolant due to the heat generated in the fuel. 
-From this we compute the temperature at the coolant cladding interface usigg the heat transfer coefficient (computed by given correlations).
+From this we compute the temperature at the coolant cladding interface using the heat transfer coefficient (computed by given correlations).
 For the cladding again we approximate to a linear temperature profile and compute the temperature at the cladding gas interface.
-Then for the gap and the fuel we compute several temperature points along the radius, at every step the properieties are updated to the temperature of the previous step.
+Then for the gap and the fuel we compute several temperature points along the radius, at every step the properties are updated to the temperature of the previous step.
 The inner void is at the same temperature as the inner surface of the fuel. \\
 
 The results provided an initial validation of the temperature distribution behavior before further analysis.
 
-Figure~\ref{fig:temperature_profile} illustrates the temperature distributions.
+Figure~\ref{fig:axial_temp_profile} illustrates the temperature along the axis, at the interfaces, while Figure \ref{fig:radial_temp_profile} shows the radial temperature profiles at the bottom, middle and top of the fuel rod.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{placeholder.png}
-\caption{Radial and axial temperature profiles for cold geometry.}
-\label{fig:temperature_profile}
+\includegraphics[width=0.7\textwidth]{axial_temp_profile_cold.png}
+\caption{Axial temperature profile for cold geometry.}
+\label{fig:axial_temp_profile}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{radial_temp_profile_cold.png}
+\caption{Radial temperature profile for cold geometry.}
+\label{fig:radial_temp_profile}
 \end{figure}
