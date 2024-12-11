@@ -750,19 +750,15 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
 
     ############################################################################
 
-def main(thickness_cladding, h_plenum):
-    params = initialize_params()
-    settings = {
-        "hot_run": True,
-        "residual_threshold": 1e-6,
-    }
+def main(delta, h_plenum, settings):
+    params = initialize_params(delta)
     #print("Parameters initialized.")
 
     Burnup = compute_burnup(params)
     #print("Burnup:", Burnup)
 
     # Initial values
-    T_fuel_out = 1000  # K (Initial guess)
+    T_fuel_out = settings['T_fuel_out_initial']  # K (Initial guess)
     He_percentage = 1  # Initial Value
 
     # Set cladding thickness
@@ -770,7 +766,7 @@ def main(thickness_cladding, h_plenum):
     Geometrical_Data = params["Geometrical_Data"]
     Geometrical_Data.thickness_cladding = thick_cladding_vector
 
-    residual = 1  # Placeholder for residual
+    residual = 1 # Placeholder for residual
     j = 0
 
     # Initial temperature map computed on cold geometrical data
@@ -780,13 +776,16 @@ def main(thickness_cladding, h_plenum):
     # ITERATIVE LOOP
     if settings["hot_run"]:
         Closure = False
-        while residual > settings["residual_threshold"] and Closure == False:
+        while residual > settings['residual_threshold'] and  Closure == False and j<settings['run_limiter']:
             j += 1
 
             T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
+
+            gap_thickness = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding) - np.array(Geometrical_Data.fuel_outer_diameter) / 2
+            print("Iteration:", j, "Residual:", residual, "Gap Thickness:", gap_thickness)
 
             Closure = check_gap_closure(Geometrical_Data)
             #if Closure:
