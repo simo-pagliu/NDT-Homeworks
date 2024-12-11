@@ -24,7 +24,7 @@ def fitness_func(thickness_cladding, plenum_height):
         settings = {
             "hot_run": True,
             "residual_threshold": 0.5 * 1e-3,
-            "run_limiter": 2000,
+            "run_limiter": 10,
             "T_fuel_out_initial": 1000
         }
         T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit = loop.main(thickness_cladding, plenum_height, settings)
