@@ -507,7 +507,7 @@ def rupture_strain(T_map, cladding_inner_diam):
         else:
             rupture_strain.append(8 +4.74e-3*(temperature-500) + 6.2e-5*(temperature-500)**2)
     
-    return rupture_strain
+    return rupture_strain, temperature
 
 def LMP(T_map, useful_life, mat_const,rupture_strain,cladding_inner_diam):
     
@@ -519,4 +519,12 @@ def LMP(T_map, useful_life, mat_const,rupture_strain,cladding_inner_diam):
         
         LMP.append(temperature*(mat_const-np.log10(rupture_strain[i_h]/useful_life)))
     
-    return LMP
+    return LMP, temperature
+
+def get_stress_from_graph(max_temperature, useful_life):
+
+    rup_strain = (8 + 4.74e-3*(max_temperature-500) + 6.2e-5*(max_temperature-500)**2)*1e-2
+    max_LMP = max_temperature*(17.125-np.log10(rup_strain/useful_life))
+    max_stress = 2060 - 0.095*max_LMP
+    
+    return max_stress, max_LMP, rup_strain
