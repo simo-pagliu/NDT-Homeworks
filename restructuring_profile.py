@@ -10,6 +10,7 @@ from IPython.display import display, Math
 
 #  2D plot of the temperature profile
 
+
 R = GeometryData.fuel_outer_diameter/2
 R_void = 0.511873*10**-3
 h_vals = GeometryData.h_values
