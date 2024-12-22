@@ -202,8 +202,9 @@ def power_profile(h, thermo_hyd_spec, value = 'power'):
     pf = thermo_hyd_spec.peak_factors
     h_from_c = thermo_hyd_spec.h_peak_factor
     if value == 'power':
-        q = thermo_hyd_spec.q_linear_avg
-        peak_value = q * len(pf) / sum(pf)
+        # q = thermo_hyd_spec.q_linear_avg
+        # peak_value = q * len(pf) / sum(pf)
+        peak_value = thermo_hyd_spec.q_linear_avg
     elif value == 'neutron_flux':
         peak_value = thermo_hyd_spec.neutron_flux_peak
     # Computes peak power such that the average power is q_linear_avg
@@ -301,7 +302,7 @@ def temperature_map(coolant, cladding, gap, fuel, thermo_hyd_spec, geom_data, T_
 
         power = power_profile(h, thermo_hyd_spec)
 
-        Temp_coolant += power * dz / ( m_rate / f * c_p)
+        Temp_coolant += f * power * dz / ( m_rate * c_p)
         
         # Initialize the temperature profile
         T_radial = [Temp_coolant] # Temperature of the coolant (ideally at r = infinity)
@@ -575,7 +576,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     # Compute average neutron flux
     # power profile
     q_values = [power_profile(h, ThermoHydraulics) for h in Geometrical_Data.h_values]
-    peak_to_average_ratio = max(q_values) / ThermoHydraulics.q_linear_avg
+    peak_to_average_ratio = max(q_values) / np.mean(q_values)
     average_neutron_flux = ThermoHydraulics.neutron_flux_peak / peak_to_average_ratio
 
     # Calculate average fission rate
@@ -743,7 +744,7 @@ def initialize_params(delta):
         coolant_inlet_pressure=1e5,  # Pa
         coolant_mass_flow_rate=0.049,  # kg/s
         q_linear_avg = 38.7e3,  #W/m,
-        uptime = 360 * 24 * 3600,  # s
+        uptime = 360 * 24 * 3600 * 1,  # s
         h_peak_factor = [h * 1e-3 for h in heights_of_slice_centre],  # m
         peak_factors = [0.572, 0.737, 0.868, 0.958, 1, 0.983, 0.912, 0.802, 0.658, 0.498],
         neutron_flux_peak = 6.1e15  # Neutron Flux (> 100 keV) (10^15 n cm^-2 s^-1) at Peak Power Node    
@@ -800,6 +801,23 @@ def check_gap_closure(Geometrical_Data):
             Closure = True
     return Closure
 
+def plastic_strain(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_map, plenum_pressure):
+    # Temperatures on the inner cladding 
+    T_cladding_inner = [get_temperature_at_point(h, r, T_map) for h, r in zip(Geometrical_Data.h_values, Geometrical_Data.cladding_outer_diameter)]
+    T_max = max(T_cladding_inner)
+    # Find index of T_max
+    idx_max = np.argmax(T_cladding_inner)
+    Yield_stress = Cladding_Proprieties.Yield_Stress(T_max-273.15)
+    # Cladding midwall radius
+    r_cladding_mid = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max] / 2
+    delta_pressure = plenum_pressure - ThermoHydraulics.coolant_inlet_pressure
+    Hoop_stress = r_cladding_mid * delta_pressure * 1e-6 / Geometrical_Data.thickness_cladding[idx_max] # Mariotte 
+    if Hoop_stress < Yield_stress:
+        plastic_strain = 0
+    else:
+        plastic_strain = 10
+    return plastic_strain
+
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
     Update temperature map and geometrical data.
@@ -837,13 +855,16 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     # Fission Gas Production
     He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
 
+    # Plastic Strain
+    Plastic_Strain = plastic_strain(params["ThermoHydraulics"], params["Cladding_Proprieties"], Geometrical_Data, previous_T_map, Gas_Pressure)
+
     # Temperature Map
     T_map, Coolant_Velocity = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
                               params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, T_fuel_out, Burnup, He_percentage)
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
 
-    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell
+    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell, Plastic_Strain
 
 
 
@@ -876,13 +897,13 @@ def main(delta, h_plenum, settings):
         while residual > settings['residual_threshold'] and  Closure == False and j<settings['run_limiter']:
             j += 1
 
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
+            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Plastic_Strain = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
 
-            gap_thickness = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding) - np.array(Geometrical_Data.fuel_outer_diameter) / 2
-            print("Iteration:", j, "Residual:", residual, "Gap Thickness:", gap_thickness)
+            # gap_thickness = np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding) - np.array(Geometrical_Data.fuel_outer_diameter) / 2
+            # print("Iteration:", j, "Residual:", residual, "Gap Thickness:", gap_thickness)
 
             Closure = check_gap_closure(Geometrical_Data)
             #if Closure:
@@ -892,4 +913,4 @@ def main(delta, h_plenum, settings):
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
 
-    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit
+    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, Burnup, Plastic_Strain
