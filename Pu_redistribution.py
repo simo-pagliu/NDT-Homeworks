@@ -2,8 +2,6 @@
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-import math
 from IPython.display import display, Math
 
 # Internal Libraries
