@@ -96,15 +96,17 @@
 % Add files for content here
 
 % INTRODUCTION
-\input{./introduction/introduction} % Chat
+\section{Introduction}
+This report presents the preliminary design and verification of a fuel pin for a sodium-cooled fast reactor, as specified in the assignment. \\
+The analysis involves calculations for material properties, thermal-hydraulic conditions, and mechanical stress limits. \\
+We verify the robustness of our models and justify the assumptions made throughout the process.
 \input{./introduction/problem_description} % Chat
 \input{./introduction/assumptions} %
 
 % VERIFICATION
 \section{Verification of Models}
-Each function used in the analysis was tested for expected behavior.
+Each part of the analysis code has been checked to confirm it behaves as expected under the defined conditions.
 
-Below are the key verification steps.
 \input{./verification/thermal-hydraulics-analysis.tex} % Chat
 \input{./verification/temperature_profiles.tex} % Simo
 \input{./verification/thermal_expansion.tex} % Lisa
@@ -112,15 +114,25 @@ Below are the key verification steps.
 \input{./verification/fission_gas.tex} % 
 \input{./verification/restructuring.tex} % Tommy
 \input{./verification/stress_analysis.tex} %
-\input{./verification/he_embrittlement.tex} %
 
-% DESIGN
-\input{./design/plenum_design} %
-\input{./design/cladding_design} %
+% OTHER EFFECTS
+\section{Other Effects}
+Additional phenomena, such as plutonium redistribution and helium embrittlement, 
+are considered to provide a broader understanding of the fuel pin's behavior.
 
-% CONCLUSION
-\input{./conclusion/future_work} %
+\input{./other/pu_redistribution.tex} % Tommy
+\input{./other/he_embrittlement.tex} %
+
+% DESIGN & CONCLUSION
+\section{Design results and conclusion}
+The study presents the design outcomes, their implications, 
+and the conclusions drawn on the feasibility and safety of the proposed design.
+
+\input{./design/code.tex} % Simo
+\input{./design/results.tex} % 
+\input{./design/conclusion.tex} %
+
 \appendix
-\input{./conclusion/appendix_code} %
+All of the code can be found in the following Github repository:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
