@@ -175,3 +175,85 @@ plt.ylabel('stress')
 plt.grid(True)
 plt.legend(loc='best')
 plt.show()
+
+#fuel valore da calcolare media aritmetica da la min e la max
+def E_f(T, p):  #temperatura hot del fuel(farei una media)
+  E = (22.43*10**4 - 31.19*T)*(1 - 2.6*p)
+  return E
+
+#cladding stessa temperatura circa
+def clad_strain_function(T):  #temperatura in hot, cladding(farei una media dei valori)
+  strain = -3.101*10**-4 + 1.545*(10**-5)*T + 2.75*(10**-9)*T**2
+  return strain
+
+r_hot_in, r_init_in, T_hot_in = cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'inner')
+r_hot_out, r_init_out, T_hot_out = cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'outer')
+
+T_clad = np.mean(T_hot_in)
+display(Math(r'T_{clad} =' + f'{T_clad:.6f}' + r'\text{K}'))
+T_fo = get_temperature_at_point(0.425, R_new_value ,vars.T_map) #da fare la hot geometry
+display(Math(r'T_{fo} =' + f'{T_fo:.6f}' + r'\text{K}'))
+T_fi = get_temperature_at_point(0.425,R_void , vars.T_map) #da fare la hot geometry
+display(Math(r'T_{fi} =' + f'{T_fi:.6f}' + r'\text{K}'))
+T_mean = (T_fo+T_fi)/2
+
+ni_fuel = 0.32
+E_value = E_f(T_mean, 0.02)
+clad_strain_value = clad_strain_function(T_clad)
+bu = 64.134 #GWd/tons
+strain_fuel = 0.07*bu/100
+
+P_sw_fuel =  E_value*(strain_fuel - clad_strain_value)/(1-ni_fuel)
+display(Math(r'Psw_{clad} =' + f'{P_sw_fuel:.6f}' + r'\text{MPa}'))
+
+#find the max value of principal stress to make a test
+#using tresca test
+
+mean_stress = [] #sigma_r_mean, sigma_theta_mean, sigma_z_mean
+
+mean_sigma_r = (-0.2-2.5)/2
+mean_stress.append(mean_sigma_r)
+
+mean_sigma_theta = (numerical_sigma_theta2(Ri) + numerical_sigma_theta2(Ro))/2
+mean_stress.append(mean_sigma_theta)
+
+mean_sigma_z = (numerical_sigma_z2(Ri) + numerical_sigma_z2(Ro))/2
+mean_stress.append(mean_sigma_z)
+
+print(mean_stress)
+
+def max_abs_difference_between_pairs(vector):  #Find the maximum of the difference module between each pair of values of the vector
+
+    max_difference = 0
+    pair = (None, None) #the matching values pair
+
+    # for cycle to find the maximum
+    for i in range(len(vector)):
+        for j in range(i + 1, len(vector)):
+            diff = abs(vector[i] - vector[j])  # Modulo della differenza
+            if diff > max_difference:
+                max_difference = diff #the maximum value of the module of the difference between pairs
+                pair = (vector[i], vector[j])
+
+    return max_difference, pair
+
+max,p = max_abs_difference_between_pairs(mean_stress)
+
+display(Math(r'max_{sigma} =' + f'{max:.6f}' + r'\text{Mpa}'))
+
+#yield stress
+sigma_Y = 555.5 - 0.25*Ti
+display(Math(r'sigma_{Y} =' + f'{sigma_Y:.6f}' + r'\text{Mpa}'))
+
+#ultimate tensile stress
+sigma_uts = 700 - 0.3125*Ti
+display(Math(r'sigma_{UTS} =' + f'{sigma_uts:.6f}' + r'\text{Mpa}'))
+
+##verifica##
+if max < 2/3*sigma_Y and max < 1/3*sigma_uts:
+  print('no problem :) ')
+else:
+  print('oh no, problems :(')
+
+
+
