@@ -197,13 +197,15 @@ T_fi = f.get_temperature_at_point(0.425,R_void , vars.T_map) #da fare la hot geo
 display(Math(r'T_{fi} =' + f'{T_fi:.6f}' + r'\text{K}'))
 T_mean = (T_fo+T_fi)/2
 
+#quello che manca è tenere in considerazione thermal stress
+
 ni_fuel = 0.32
 E_value = E_f(T_mean, 0.02)
 clad_strain_value = clad_strain_function(T_clad)
 bu = 64.134 #GWd/tons
 strain_fuel = 0.07*bu/100
 
-P_sw_fuel =  E_value*(strain_fuel - clad_strain_value)/(1-ni_fuel)
+P_sw_fuel =  E_value*(strain_fuel - clad_strain_value)/(1-ni_fuel)  #questa parte non so se ha senso, è per tenere in condiderazione quello swelling fuel strain che dà nel testo
 display(Math(r'Psw_{clad} =' + f'{P_sw_fuel:.6f}' + r'\text{MPa}'))
 
 #find the max value of principal stress to make a test
