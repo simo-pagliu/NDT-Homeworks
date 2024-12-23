@@ -60,7 +60,7 @@ plt.axvspan(r_0, r_1, color=colors[4], alpha=0.3, label='Fuel Region')
 # Set title and axis labels
 plt.title('Temperature Profile')
 plt.xlabel('Radius [mm]')
-plt.xlim(r_0, r_4)
+plt.xlim(r_0, r_1)
 plt.ylabel('Temperature [K]')
 
 # Add legend to the plot
