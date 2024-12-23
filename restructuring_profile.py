@@ -186,14 +186,14 @@ def clad_strain_function(T):  #temperatura in hot, cladding(farei una media dei 
   strain = -3.101*10**-4 + 1.545*(10**-5)*T + 2.75*(10**-9)*T**2
   return strain
 
-r_hot_in, r_init_in, T_hot_in = cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'inner')
-r_hot_out, r_init_out, T_hot_out = cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'outer')
+r_hot_in, r_init_in, T_hot_in = f.cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'inner')
+r_hot_out, r_init_out, T_hot_out = f.cold_to_hot_clad(Cladding_Proprieties, Geometrical_Data, vars, h_vals, flag = 'outer')
 
 T_clad = np.mean(T_hot_in)
 display(Math(r'T_{clad} =' + f'{T_clad:.6f}' + r'\text{K}'))
-T_fo = get_temperature_at_point(0.425, R_new_value ,vars.T_map) #da fare la hot geometry
+T_fo = f.get_temperature_at_point(0.425, R_new_value ,vars.T_map) #da fare la hot geometry
 display(Math(r'T_{fo} =' + f'{T_fo:.6f}' + r'\text{K}'))
-T_fi = get_temperature_at_point(0.425,R_void , vars.T_map) #da fare la hot geometry
+T_fi = f.get_temperature_at_point(0.425,R_void , vars.T_map) #da fare la hot geometry
 display(Math(r'T_{fi} =' + f'{T_fi:.6f}' + r'\text{K}'))
 T_mean = (T_fo+T_fi)/2
 
