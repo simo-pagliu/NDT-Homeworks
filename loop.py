@@ -812,10 +812,14 @@ def plastic_strain(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_m
     r_cladding_mid = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max] / 2
     delta_pressure = plenum_pressure - ThermoHydraulics.coolant_inlet_pressure
     Hoop_stress = r_cladding_mid * delta_pressure * 1e-6 / Geometrical_Data.thickness_cladding[idx_max] # Mariotte 
+    # CRITERIO DI LAMÈ DA METTERE QUI
+    # VEDI QUALE TRA MARIOTTE E LAMÈ È PIÙ STRINGENTE E SCELGI QUELLO
     if Hoop_stress < Yield_stress:
-        plastic_strain = 0
+        # NON C'È DEFORMAZIONE PLASTICA... CHE SI FÀ?
+        plastic_strain = 0 # PLACEHOLDER VALUE
     else:
-        plastic_strain = 10
+        # DEFORMAZIONE PLASTICA... CHE SI FÀ?
+        plastic_strain = 10 # PLACEHOLDER VALUE
     return plastic_strain
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
