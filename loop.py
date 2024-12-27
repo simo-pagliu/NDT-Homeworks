@@ -808,18 +808,51 @@ def plastic_strain(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_m
     # Find index of T_max
     idx_max = np.argmax(T_cladding_inner)
     Yield_stress = Cladding_Proprieties.Yield_Stress(T_max-273.15)
-    # Cladding midwall radius
+    Ultimate_Tensile_Strength = Cladding_Proprieties.Ultimate_Tensile_Strength(T_max-273.15)
+    
+    # Cladding radii
+    r_cladding_inner = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max]
     r_cladding_mid = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max] / 2
-    delta_pressure = plenum_pressure - ThermoHydraulics.coolant_inlet_pressure
-    Hoop_stress = r_cladding_mid * delta_pressure * 1e-6 / Geometrical_Data.thickness_cladding[idx_max] # Mariotte 
-    # CRITERIO DI LAMÈ DA METTERE QUI
-    # VEDI QUALE TRA MARIOTTE E LAMÈ È PIÙ STRINGENTE E SCELGI QUELLO
+    r_cladding_outer = Geometrical_Data.cladding_outer_diameter[idx_max] / 2
+    
+    # Pressure inside the gap
+    pressure_in = plenum_pressure
+    # Pressure in the coolant
+    pressure_out = ThermoHydraulics.coolant_inlet_pressure
+    
+    flag = True # Set flag for plastic strain on True by default
+    
+    #####################################
+    # Mariotte Criterion
+    Hoop_stress = r_cladding_mid * (pressure_in - pressure_out) * 1e-6 / Geometrical_Data.thickness_cladding[idx_max] 
     if Hoop_stress < Yield_stress:
-        # NON C'È DEFORMAZIONE PLASTICA... CHE SI FÀ?
-        plastic_strain = 0 # PLACEHOLDER VALUE
+        flag = False
+    #####################################
+    
+    #####################################
+    # Lamè Criterion
+    Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
+    Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
+    # Expressions obtained from stress analysis in Verification.ipynb
+    stress_r = -Costant_1/(2*r_cladding_mid**2) + Costant_2
+    sigma_theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
+    sigma_z = 2*Costant_2
+    # Take the maximum difference between couples of the three stresses
+    Lame_stress = max([abs(stress_r - sigma_theta), abs(stress_r - sigma_z), abs(sigma_theta - sigma_z)]) 
+    Lame_stress = Lame_stress * 1e-6 # MPa
+    if Lame_stress < 2/3*Yield_stress and Lame_stress < 1/3*Ultimate_Tensile_Strength:
+        flag = False
+    #####################################
+    
+    # Evaluate plastic strain
+    # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
+    # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
+    # but the limits on the Lamè criterion are much more restrictive (~33% more restrictive)
+    if flag:
+        plastic_strain = 10 # Placeholder value to trigger the warning
     else:
-        # DEFORMAZIONE PLASTICA... CHE SI FÀ?
-        plastic_strain = 10 # PLACEHOLDER VALUE
+        plastic_strain = 0 # No plastic strain
+    
     return plastic_strain
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
