@@ -69,7 +69,7 @@ def fitness_func(thickness_cladding, plenum_height):
 
         fitness_handicap = 1e3
         
-        Operation_Time_limit = 1
+        Operation_Time_limit = 4
         if Time_to_Rupture < Operation_Time_limit:
             Fitness_Function += fitness_handicap
         
