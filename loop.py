@@ -844,6 +844,9 @@ def plastic_strain(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_m
         flag = False
     #####################################
     
+    # Take as reference stress the maximum between the two criteria
+    Stress = max(Hoop_stress, Lame_stress)
+    
     # Evaluate plastic strain
     # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
     # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
