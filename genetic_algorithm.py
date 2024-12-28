@@ -6,7 +6,7 @@ import time
 import os
 import struct
 import pandas as pd  # To store results in a DataFrame for easy comparison
-import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
 import loop
 from scipy.interpolate import interp1d
@@ -27,7 +27,7 @@ def fitness_func(thickness_cladding, plenum_height):
             "run_limiter": 10,
             "T_fuel_out_initial": 1000
         }
-        T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit = loop.main(thickness_cladding, plenum_height, settings)
+        T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, burnup, plastic_strain, time_to_rupture =  loop.main(thickness_cladding, plenum_height, settings)
 
         # Fuel Max Temperature
         Max_Fuel_Temperature = np.max(T_map.T)
@@ -48,8 +48,10 @@ def fitness_func(thickness_cladding, plenum_height):
         Plenum_Pressure
 
         # Istantaneous cladding plastic strain
-        #
-        #
+        Max_Plastic_Strain = np.max(plastic_strain)
+        
+        # Time to rupture
+        Time_to_Rupture = np.min(time_to_rupture)
 
         # Maximum cladding volumetric swelling
         Maximum_Cladding_Volumetric_Swelling = np.max(Void_Swelling)
@@ -66,7 +68,10 @@ def fitness_func(thickness_cladding, plenum_height):
         Fitness_Function = Max_Fuel_Temperature
 
         fitness_handicap = 1e3
-        fitness_handicap_if_fails = 1e5
+        
+        Maximum_Plastic_Strain_limit = 0.5
+        if Max_Plastic_Strain > Maximum_Plastic_Strain_limit:
+            Fitness_Function += fitness_handicap
 
         Maximum_Cladding_Volumetric_Swelling_limit = 3
         if Maximum_Cladding_Volumetric_Swelling > Maximum_Cladding_Volumetric_Swelling_limit:
@@ -80,11 +85,11 @@ def fitness_func(thickness_cladding, plenum_height):
         if Plenum_Pressure > Plenum_Pressure_limit:
             Fitness_Function += fitness_handicap
     except:
-        Fitness_Function = fitness_handicap_if_fails
+        Fitness_Function = 1e5
     return Fitness_Function
 
 limit_x_low = 20e-6 # Cladding Thickness lower limit
-limit_x = 500e-6 # Cladding Thickness upper limit
+limit_x = 200e-6 # Cladding Thickness upper limit
 limit_y = 1.2 # Plenum Height upper limit
 ################################################################################
 
@@ -92,21 +97,21 @@ limit_y = 1.2 # Plenum Height upper limit
 # Probability based on fitness (for minimization)
 # The probability is inversely proportional to the fitness value
 # The higher the fitness, the lower the probability
-def fitness_probability(set):
-    fitness_values = [fitness_func(pair[0], pair[1]) for pair in set]
+# Parallelized fitness evaluation function
+def parallel_fitness_func(population):
+    with ProcessPoolExecutor() as executor:
+        fitness_values = list(executor.map(lambda pair: fitness_func(pair[0], pair[1]), population))
+    return fitness_values
+
+# Modify fitness_probability to use parallel evaluation
+def fitness_probability(population):
+    fitness_values = parallel_fitness_func(population)
     if max(fitness_values) == min(fitness_values):
-        probabilities = [1 / len(set)] * len(set)
+        probabilities = [1 / len(population)] * len(population)
     else:
-        # max_fitness = max(fitness_values)
-        # inverted_fitness = [(max_fitness - fitness) for fitness in fitness_values]
-        # total_inverted_fitness = sum(inverted_fitness)
-        # probabilities = [fit / total_inverted_fitness for fit in inverted_fitness]
-        fitness_values = - np.array(fitness_values)
-        # set any negative fitness to 0
+        fitness_values = -np.array(fitness_values)
         fitness_values = np.where(fitness_values < 0, 0, fitness_values)
-        # calculate the sum of the fitness values
         sum_fitness = sum(fitness_values)
-        # calculate the probability of each individual
         probabilities = fitness_values / sum_fitness
     return probabilities
 ################################################################################
