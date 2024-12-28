@@ -598,12 +598,12 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     P_lambda = lambda t: fission_yield * avg_fission_rate * t
 
     # Define GM as a lambda function based on the given solution
-    GM_lambda = lambda r: (-fission_yield * avg_fission_rate * r**2 / (4 * diffusivity_coeff)) + (2.5e-11 * fission_yield * avg_fission_rate / diffusivity_coeff)
+    GM_lambda = lambda r: (-fission_yield * avg_fission_rate * r**2 / (4 * diffusivity_coeff)) + (6.25e-12 * fission_yield * avg_fission_rate / diffusivity_coeff)
 
     ### Integrate the solution for GM in the radial direction using numerical method
-    r_vals = np.linspace(0, a, 1000)  # Create a range of radius values
+    r_vals = np.linspace(0, a/2, 1000)  # Create a range of radius values
     GM_vals = [GM_lambda(r) for r in r_vals]  # Evaluate GM_lambda at each radius value
-    GM_final = np.trapz(GM_vals, r_vals)  # Numerically integrate using trapezoidal rule
+    GM_final = 2 * np.trapz(GM_vals, r_vals)  # Numerically integrate using trapezoidal rule
 
     ## Compute the amount of gas released in plenum after 1 year
 
