@@ -491,3 +491,40 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     new_p_gas = total_moles_gas * 8.314 * (T_gas) / V_plenum  # Pa
 
     return He_percentage, new_p_gas
+
+## THERMAL CREEP
+
+def rupture_strain(T_map, cladding_inner_diam):
+    
+    rupture_strain = []
+    
+    for h in T_map.h[:,0]:
+        
+        temperature=get_temperature_at_point(h, cladding_inner_diam, T_map)
+        
+        if temperature < 500:
+            rupture_strain.append(0.1e-5)
+        else:
+            rupture_strain.append(8 +4.74e-3*(temperature-500) + 6.2e-5*(temperature-500)**2)
+    
+    return rupture_strain, temperature
+
+def LMP(T_map, useful_life, mat_const,rupture_strain,cladding_inner_diam):
+    
+    LMP = []
+    
+    for i_h, h in enumerate(T_map.h[:,0]):
+        
+        temperature=get_temperature_at_point(h, cladding_inner_diam, T_map)
+        
+        LMP.append(temperature*(mat_const-np.log10(rupture_strain[i_h]/useful_life)))
+    
+    return LMP, temperature
+
+def get_stress_from_graph(max_temperature, useful_life):
+
+    rup_strain = (8 + 4.74e-3*(max_temperature-500) + 6.2e-5*(max_temperature-500)**2)*1e-2
+    max_LMP = max_temperature*(17.125-np.log10(rup_strain/useful_life))
+    max_stress = 2060 - 0.095*max_LMP
+    
+    return max_stress, max_LMP, rup_strain
