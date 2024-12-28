@@ -801,62 +801,75 @@ def check_gap_closure(Geometrical_Data):
             Closure = True
     return Closure
 
-def plastic_strain(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_map, plenum_pressure):
+def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data, T_map, plenum_pressure):
     # Temperatures on the inner cladding 
     T_cladding_inner = [get_temperature_at_point(h, r, T_map) for h, r in zip(Geometrical_Data.h_values, Geometrical_Data.cladding_outer_diameter)]
-    T_max = max(T_cladding_inner)
-    # Find index of T_max
-    idx_max = np.argmax(T_cladding_inner)
-    Yield_stress = Cladding_Proprieties.Yield_Stress(T_max-273.15)
-    Ultimate_Tensile_Strength = Cladding_Proprieties.Ultimate_Tensile_Strength(T_max-273.15)
-    
-    # Cladding radii
-    r_cladding_inner = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max]
-    r_cladding_mid = Geometrical_Data.cladding_outer_diameter[idx_max] / 2 - Geometrical_Data.thickness_cladding[idx_max] / 2
-    r_cladding_outer = Geometrical_Data.cladding_outer_diameter[idx_max] / 2
-    
-    # Pressure inside the gap
-    pressure_in = plenum_pressure
-    # Pressure in the coolant
-    pressure_out = ThermoHydraulics.coolant_inlet_pressure
-    
-    flag = True # Set flag for plastic strain on True by default
-    
-    #####################################
-    # Mariotte Criterion
-    Hoop_stress = r_cladding_mid * (pressure_in - pressure_out) * 1e-6 / Geometrical_Data.thickness_cladding[idx_max] 
-    if Hoop_stress < Yield_stress:
-        flag = False
-    #####################################
-    
-    #####################################
-    # Lamè Criterion
-    Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
-    Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
-    # Expressions obtained from stress analysis in Verification.ipynb
-    stress_r = -Costant_1/(2*r_cladding_mid**2) + Costant_2
-    sigma_theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
-    sigma_z = 2*Costant_2
-    # Take the maximum difference between couples of the three stresses
-    Lame_stress = max([abs(stress_r - sigma_theta), abs(stress_r - sigma_z), abs(sigma_theta - sigma_z)]) 
-    Lame_stress = Lame_stress * 1e-6 # MPa
-    if Lame_stress < 2/3*Yield_stress and Lame_stress < 1/3*Ultimate_Tensile_Strength:
-        flag = False
-    #####################################
-    
-    # Take as reference stress the maximum between the two criteria
-    Stress = max(Hoop_stress, Lame_stress)
-    
-    # Evaluate plastic strain
-    # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
-    # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
-    # but the limits on the Lamè criterion are much more restrictive (~33% more restrictive)
-    if flag:
-        plastic_strain = 10 # Placeholder value to trigger the warning
-    else:
-        plastic_strain = 0 # No plastic strain
-    
-    return plastic_strain
+    plastic_strain = []
+    time_to_rupture = []
+    for i, T_ref in enumerate(T_cladding_inner):
+        Yield_stress = Cladding_Proprieties.Yield_Stress(T_ref-273.15)
+        Ultimate_Tensile_Strength = Cladding_Proprieties.Ultimate_Tensile_Strength(T_ref-273.15)
+        
+        # Cladding radii
+        r_cladding_inner = Geometrical_Data.cladding_outer_diameter[i] / 2 - Geometrical_Data.thickness_cladding[i]
+        r_cladding_mid = Geometrical_Data.cladding_outer_diameter[i] / 2 - Geometrical_Data.thickness_cladding[i] / 2
+        r_cladding_outer = Geometrical_Data.cladding_outer_diameter[i] / 2
+        
+        # Pressure inside the gap
+        pressure_in = plenum_pressure
+        # Pressure in the coolant
+        pressure_out = ThermoHydraulics.coolant_inlet_pressure
+        
+        flag = True # Set flag for plastic strain on True by default
+        
+        #####################################
+        # Mariotte Criterion
+        Hoop_stress = r_cladding_mid * (pressure_in - pressure_out) * 1e-6 / Geometrical_Data.thickness_cladding[i] 
+        if Hoop_stress < Yield_stress:
+            flag = False
+        #####################################
+        
+        #####################################
+        # Lamè Criterion
+        Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
+        Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
+        # Expressions obtained from stress analysis in Verification.ipynb
+        stress_r = -Costant_1/(2*r_cladding_mid**2) + Costant_2
+        sigma_theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
+        sigma_z = 2*Costant_2
+        # Take the maximum difference between couples of the three stresses
+        Lame_stress = max([abs(stress_r - sigma_theta), abs(stress_r - sigma_z), abs(sigma_theta - sigma_z)]) 
+        Lame_stress = Lame_stress * 1e-6 # MPa
+        if Lame_stress < 2/3*Yield_stress and Lame_stress < 1/3*Ultimate_Tensile_Strength:
+            flag = False
+        #####################################
+        
+        # Take as reference stress the maximum between the two criteria
+        Stress = max(Hoop_stress, Lame_stress)
+        
+        #####################################
+        # Evaluate effects:
+        # Plastic Strain
+        # Time to rupture due to creep
+        #
+        # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
+        # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
+        # but the limits on the Lamè criterion are much more restrictive (~33% more restrictive)
+        if flag:
+            plastic_strain.append(10) # Placeholder value to trigger the warning
+            time_to_rupture.append(0) # No evaluation of the time to rupture since we are in the plastic regime
+        else:
+            # No plastic strain --> Evaluate rupture due to creep
+            LM_parameter = (2060 - Stress)/0.095 # Larson-Miller Parameter with the equivalent stress
+
+            temp = 10**((LM_parameter / T_ref) - 17.125) # hours
+            temp = temp / (365*24) # convert to years
+            time_to_rupture.append(temp)
+
+            plastic_strain.append(0) # No plastic strain
+        #####################################
+        
+    return plastic_strain, time_to_rupture
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
@@ -896,7 +909,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
 
     # Plastic Strain
-    Plastic_Strain = plastic_strain(params["ThermoHydraulics"], params["Cladding_Proprieties"], Geometrical_Data, previous_T_map, Gas_Pressure)
+    Plastic_Strain, Time_To_Rupture = mechanical_analysis(params["ThermoHydraulics"], params["Cladding_Proprieties"], Geometrical_Data, previous_T_map, Gas_Pressure)
 
     # Temperature Map
     T_map, Coolant_Velocity = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
@@ -904,7 +917,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
 
-    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell, Plastic_Strain
+    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell, Plastic_Strain, Time_To_Rupture
 
 
 
@@ -937,7 +950,7 @@ def main(delta, h_plenum, settings):
         while residual > settings['residual_threshold'] and  Closure == False and j<settings['run_limiter']:
             j += 1
 
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Plastic_Strain = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
+            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Plastic_Strain, Time_to_Rupture = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
@@ -953,4 +966,4 @@ def main(delta, h_plenum, settings):
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
 
-    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, Burnup, Plastic_Strain
+    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, Burnup, Plastic_Strain, Time_to_Rupture
