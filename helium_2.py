@@ -8,6 +8,8 @@ from scipy.integrate import solve_ivp
 avogadro_number = 6.022e23  # atoms/mol
 density_steel = 7.9  # g/cm³ (approximate for stainless steel)
 time_seconds = 365 * 24 * 3600  # 1 year in seconds
+# Constants
+# time_seconds = 2 * 365 * 24 * 3600  # 2 years in seconds
 
 # Cladding composition (wt.%)
 composition = {
@@ -62,6 +64,7 @@ t_span = (t_0, t_f)
 t_eval = np.linspace(t_0, t_f, 1000)
 
 # Neutron flux data
+thermal_flux = 1e13  # Thermal flux value (given constant)
 peak_flux = 6.1e15  # n/cm²/s at the peak node
 per_term_flux = 0
 thermal_flux = per_term_flux* peak_flux  # Assumed fraction of thermal flux
@@ -73,6 +76,12 @@ tot_at_He = 0
 fuel_column_height = 0.850 #m
 r_out_fuel = 0.00542 #m
 volume_fuel_column = np.pi* (r_out_fuel/ 2) ** 2 * fuel_column_height # m³
+
+# Initialize total helium production across all nodes
+total_helium_production = 0
+num_nodes = len(flux_values)  # Number of nodes
+# Initialize arrays to store cumulative helium contributions at each time step
+average_helium_contributions = np.zeros_like(t_eval)
 
 for fast_flux in flux_values:
     # Bateman system of equations with helium contributions
@@ -153,7 +162,22 @@ for fast_flux in flux_values:
     He_contrib_Ni_therm = sol_extended.y[10]
     He_contrib_B10 = sol_extended.y[11]
 
-    # Plot helium contributions over time
+    # Calculate total helium contribution for this node
+    helium_node_total = (
+        He_contrib_Fe[-1]
+        + He_contrib_Cr[-1]
+        + He_contrib_Ni_fast[-1]
+        + He_contrib_Ni_therm[-1]
+        + He_contrib_B10[-1]
+    )
+    
+    # Add to total helium production
+    total_helium_production += helium_node_total
+    # Calculate the average helium contributions over all nodes
+    average_helium_contributions = total_helium_production / num_nodes
+
+    
+    # Plot the average helium contribution over time
     plt.figure(figsize=(10, 6))
     plt.plot(sol_extended.t / (24 * 3600), He_contrib_Fe, label="He from Fe", color="c")
     plt.plot(sol_extended.t / (24 * 3600), He_contrib_Cr, label="He from Cr", color="b")
@@ -171,4 +195,10 @@ for fast_flux in flux_values:
     # Obtain the total He production 
     tot_at_He += He_contrib_Fe[-1] + He_contrib_Cr[-1] + He_contrib_Ni_fast[-1] + He_contrib_Ni_therm[-1] + He_contrib_B10[-1]
 
+
+
+# Calculate average helium production
+average_helium_production = tot_at_He / num_nodes
+# Print the final average value
 print(f"Total helium production: {tot_at_He:.2e} atoms")
+print(f"Average helium production across all nodes: {average_helium_production:.2e} atoms")
