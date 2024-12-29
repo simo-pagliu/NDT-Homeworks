@@ -92,9 +92,10 @@ def fitness_func(thickness_cladding, plenum_height):
         Fitness_Function = 1e5
     return Fitness_Function
 
-limit_x_low = 20e-6 # Cladding Thickness lower limit
-limit_x = 200e-6 # Cladding Thickness upper limit
-limit_y = 1.2 # Plenum Height upper limit
+limit_x_low = 80e-6 # Cladding Thickness lower limit
+limit_x = 120e-6 # Cladding Thickness upper limit
+limit_y = 1 # Plenum Height upper limit
+limit_y_low = 0.8 # Plenum Height lower limit
 ################################################################################
 
 ################################################################################
@@ -228,7 +229,7 @@ def redefine_mutation(population, probability):
             mutated[i] = [random.uniform(limit_x_low, limit_x), population[i][1]]
         # Mutate y
         if random.random() < probability:
-            mutated[i] = [population[i][0], random.uniform(0, limit_y)]
+            mutated[i] = [population[i][0], random.uniform(limit_y_low, limit_y)]
     return mutated
 
 def bit_mutation(population, probability):
@@ -289,7 +290,7 @@ def GA_loop(max_iterations, initial_population_size, probability_of_crossover,
     if load_previous:
         population, avg_fitness_history = load_state()
     else:
-        population = initialize_population(initial_population_size, limit_x_low, limit_x, 0, limit_y)
+        population = initialize_population(initial_population_size, limit_x_low, limit_x, limit_y_low, limit_y)
         avg_fitness_history = []
 
     # Initialize plot if enabled
@@ -423,9 +424,9 @@ def run_ga(params):
 ################################################################################
 # Main Function
 if __name__ == "__main__": 
-    loop_iterations = 1
+    loop_iterations = 100
     initial_population_size = 150  # Initialize a population
-    max_iterations = 1
+    max_iterations = 10  # Maximum number of iterations
     crossover_prob = 0.6
     mutation_prob = 0.6
     tournament_frac = 0.2
