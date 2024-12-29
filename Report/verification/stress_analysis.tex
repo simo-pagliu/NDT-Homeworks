@@ -1,58 +1,59 @@
-\subsection{Stress Analysis}
 \section{Mechanical Analysis - Stress Assessment}
 
 \subsection{Introduction}
-The mechanical analysis focuses on evaluating the stresses in the cladding to ensure it remains within safe limits during operation. Stresses were computed using the Mariotte and Lamé criteria, the potential for plastic strain was assessed, and the time to rupture due to thermal creep was evaluated.
+This section focuses on the mechanical analysis of the cladding, evaluating stresses to ensure compliance with safety limits during operation. The analysis includes stress computations based on the Mariotte and Lamé criteria, an assessment of plastic strain potential, and an evaluation of rupture time due to thermal creep.
 
 \subsection{Methodology}
-The cladding stress distribution was computed using elasticity equations for cylindrical geometries:
+The stress distribution in the cladding was calculated using elasticity equations for cylindrical geometries, under the assumptions of orthocylindricity and axial symmetry.
 
+\subsubsection{Mariotte Criterion}
 \begin{itemize}
-    \item \textbf{Mariotte Criterion:}
-    \begin{itemize}
-        \item Evaluates hoop stress at the mid-wall of the cladding.
-        \item Used to check for yielding. In preliminary calculations, the Mariotte stress was found to be slightly higher than the Lamé stress, though the latter criterion is more restrictive.
-    \end{itemize}
+    \item[$\hookrightarrow$] Evaluates the hoop stress at the mid-wall of the cladding.
+    \item[$\hookrightarrow$] Used to check for yielding. Preliminary calculations indicated that the Mariotte stress is slightly higher than the Lamé stress, although the latter imposes stricter criteria.
+\end{itemize}
 
-    \item \textbf{Lamé Criterion:}
-    \begin{itemize}
-        \item Considers radial, hoop, and axial stresses.
-        \item Maximum stress differences are used to ensure compliance with yield and ultimate strength limits. The Lamé criterion was found to impose stricter limits (\textasciitilde33\% more restrictive) compared to the Mariotte criterion.
-    \end{itemize}
+\subsubsection{Lamé Criterion}
+\begin{itemize}
+    \item[$\hookrightarrow$] Considers radial, hoop, and axial stresses.
+    \item[$\hookrightarrow$] The radial stress is computed using the pipe equation with a superposition solution:
+    \begin{equation}
+        \frac{d}{dr} \left( r^3 \cdot \frac{d\sigma_r(r)}{dr} \right) + \frac{\alpha E}{1 - \nu} \cdot \frac{dT(r)}{dr} = 0
+    \end{equation}
+    Using equilibrium relations, the hoop stress is determined as:
+    \[
+    \sigma_\theta = \sigma_r + \frac{d\sigma_r}{dr}
+    \]
+    \item[$\hookrightarrow$] The Tresca criterion is applied for verification, ensuring compliance with yield and ultimate strength limits. The Lamé criterion was found to impose limits approximately 33\% stricter than the Mariotte criterion.
+\end{itemize}
 
-    \item \textbf{Plastic Strain Check:}
-    \begin{itemize}
-        \item Plastic strain is flagged if either criterion indicates stresses beyond the yield strength.
-        \item No significant plastic strain was observed when both criteria were satisfied.
-    \end{itemize}
+\subsubsection{Plastic Strain Check}
+\begin{itemize}
+    \item[$\hookrightarrow$] Plastic strain is flagged if either criterion predicts stresses exceeding the yield strength.
+    \item[$\hookrightarrow$] No significant plastic strain was observed when both criteria were satisfied.
+\end{itemize}
 
-    \item \textbf{Thermal Creep (Time to Rupture):}
-    \begin{itemize}
-        \item The Larson-Miller Parameter (LMP) was used to compute the rupture time based on operating stresses and temperatures.
-        \item Even in conservative scenarios, the calculated time to rupture confirmed sufficient margins, indicating minimal risk of creep-related failure.
-    \end{itemize}
+\subsubsection{Thermal Creep (Time to Rupture)}
+\begin{itemize}
+    \item[$\hookrightarrow$] The rupture time due to thermal creep was evaluated using the Larson-Miller Parameter (LMP), based on operating stresses and temperatures.
+    \item[$\hookrightarrow$] Even under conservative assumptions, the calculated time to rupture showed sufficient margins, indicating minimal risk of creep-related failure.
 \end{itemize}
 
 \subsection{Results and Conclusion}
-Preliminary verification shows that the cladding meets safety requirements:
 
+\subsubsection{Stresses from Mariotte and Lamé}
 \begin{itemize}
-    \item \textbf{Stresses from Mariotte and Lamé:}
-    \begin{itemize}
-        \item Both criteria confirmed that the stresses remain below critical limits.
-        \item While the Mariotte stress tends to be marginally higher, it is still within safe bounds. Lamé's stricter limits ensure additional safety.
-    \end{itemize}
-
-    \item \textbf{Plastic Strain:}
-    \begin{itemize}
-        \item No significant plastic strain was observed, indicating that the cladding will remain in the elastic regime under the specified operational conditions.
-    \end{itemize}
-
-    \item \textbf{Time to Rupture:}
-    \begin{itemize}
-        \item Using the LMP approach, the time to rupture due to thermal creep was calculated.
-        \item Even in the most conservative cases, the cladding demonstrated an operational life far exceeding the irradiation period.
-    \end{itemize}
+    \item[$\hookrightarrow$] Both criteria confirmed that the stresses remain below critical limits.
+    \item[$\hookrightarrow$] While the Mariotte stress tends to be marginally higher, it remains within safe bounds. Lamé's stricter limits provide an additional safety margin.
 \end{itemize}
 
-These checks validate the cladding's mechanical reliability in the initial design. The preliminary analysis indicates that the proposed design is safe and robust, with sufficient margins for long-term operation. Further detailed evaluations can refine these results as the design evolves.
+\subsubsection{Plastic Strain}
+\begin{itemize}
+    \item[$\hookrightarrow$] No significant plastic strain was observed, confirming that the cladding operates within the elastic regime under specified conditions.
+\end{itemize}
+
+\subsubsection{Time to Rupture}
+\begin{itemize}
+    \item[$\hookrightarrow$] The LMP-based calculation indicated that the cladding's operational life significantly exceeds the irradiation period, even under conservative conditions.
+\end{itemize}
+
+These analyses validate the mechanical reliability of the cladding in the initial design. The results demonstrate that the proposed design is safe and robust, with sufficient margins for long-term operation. Further refinement of the design will allow for additional verification and optimization.

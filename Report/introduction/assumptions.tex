@@ -1,25 +1,25 @@
 \subsection{Assumptions}
-To address the given problem, the following assumptions were made:
+The following assumptions were adopted to address the given problem:
 
-\textbf{Steady State Solution for Gas in Grains:}
-
+\subsubsection*{Steady-State Solution for Gas in Grains}
 \begin{itemize}
-\item[$\hookrightarrow$] The rate equation for the gas remaining in the grains (PDE) was solved in steady state conditions, given that we just want to size the plenum for 1-year operation and are not interested in the specific behavior in time of the function.
+    \item[$\hookrightarrow$] The rate equation for the gas within the grains (PDE) was analyzed under steady-state conditions. This approach was chosen because the objective is to size the plenum for a 1-year operation without focusing on the temporal evolution of the function.
 \end{itemize}
 
-\textbf{Fission Rate Calculation:}
-
+\subsubsection*{Fission Rate Calculation}
 \begin{itemize}
-\item[$\hookrightarrow$] The fission rate was calculated by using the formula (macroscopic cross section * average flux).
-\item[$\hookrightarrow$] The macroscopic cross section of fission was computed from data taken from the JANIS database.
-\item[$\hookrightarrow$] The average flux was evaluated considering power and flux profile to be equal.
+    \item[$\hookrightarrow$] The fission rate was determined using the formula:
+    \begin{equation*}
+        \text{Fission Rate} = \Sigma_f \Phi_{\text{avg}}  
+    \end{equation*}
+    \item[$\hookrightarrow$] The macroscopic fission cross section was derived using data from the JANIS database.
+    \item[$\hookrightarrow$] The average flux was calculated by assuming a uniform power and flux profile.
 \end{itemize}
 
-\textbf{Material Properties and Geometry:}
-
+\subsubsection*{Material Properties and Geometry}
 \begin{itemize}
-\item[$\hookrightarrow$] Material properties are temperature-dependent and were modeled using provided empirical correlations.
-\item[$\hookrightarrow$] Axial power and neutron flux profiles remain constant over time.
-\item[$\hookrightarrow$] Initial helium pressure and temperature in the fuel-cladding gap were assumed as specified.
-\item[$\hookrightarrow$] Simplifications in geometry, such as neglecting axial deformation, were made to ease computation.
+    \item[$\hookrightarrow$] Material properties were treated as temperature-dependent and modeled using the provided empirical correlations.
+    \item[$\hookrightarrow$] Axial power and neutron flux profiles were assumed to remain constant over time.
+    \item[$\hookrightarrow$] Initial helium pressure and temperature in the fuel-cladding gap were considered as specified.
+    \item[$\hookrightarrow$] Simplifications in geometry were introduced, such as neglecting axial deformation, to facilitate computation.
 \end{itemize}
