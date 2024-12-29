@@ -646,7 +646,7 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
 ##################################################
 # Main Function
 ##################################################
-def initialize_params(delta):
+def initialize_params(delta, years):
     """
     Initialization function to set up parameters.
     
@@ -744,7 +744,7 @@ def initialize_params(delta):
         coolant_inlet_pressure=1e5,  # Pa
         coolant_mass_flow_rate=0.049,  # kg/s
         q_linear_avg = 38.7e3,  #W/m,
-        uptime = 360 * 24 * 3600 * 2,  # s
+        uptime = 360 * 24 * 3600 * years,  # s
         h_peak_factor = [h * 1e-3 for h in heights_of_slice_centre],  # m
         peak_factors = [0.572, 0.737, 0.868, 0.958, 1, 0.983, 0.912, 0.802, 0.658, 0.498],
         neutron_flux_peak = 6.1e15  # Neutron Flux (> 100 keV) (10^15 n cm^-2 s^-1) at Peak Power Node    
@@ -923,8 +923,8 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
 
     ############################################################################
 
-def main(delta, h_plenum, settings):
-    params = initialize_params(delta)
+def main(delta, h_plenum, years, settings):
+    params = initialize_params(delta, years)
     #print("Parameters initialized.")
 
     Burnup = compute_burnup(params)
