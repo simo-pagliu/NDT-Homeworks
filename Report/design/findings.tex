@@ -1,5 +1,19 @@
 \subsection{Findings and Considerations}
 
-During the dimensioning process, it was observed that the cladding thickness is highly influenced by the operational time specified in the fitness function. For short cycles, such as one year, the algorithm tends to suggest a thinner cladding, which may not be adequate for long-term operation. To address this, even though the task focused on a one-year design, the dimensioning was based on an expected four-year fuel cycle, which is more representative of fast reactor operation.
+During the dimensioning process, it was observed that the cladding thickness is strongly influenced by the operational time specified in the fitness function. For short cycles, such as one year, the algorithm tends to recommend a thinner cladding, which may not be suitable for long-term operation. To address this limitation, even though the task focused on a one-year design, the dimensioning was based on an expected four-year fuel cycle, which is more representative of typical fast reactor operation.
 
-This conservative approach ensures enhanced reliability and provides additional safety margins over the lifecycle of the fuel pin. Further findings and considerations will be incorporated as additional analyses are completed.
+This conservative approach ensures improved reliability and provides additional safety margins over the lifecycle of the fuel pin.
+
+It was also observed that the time to rupture depends on the height of the plenum. A lower plenum height leads to higher internal pressure, which in turn reduces the time to rupture. Consequently, the algorithm’s optimization tends to converge towards the maximum plenum height and minimum cladding thickness within the specified exploration range.
+
+Given these trends, additional considerations were taken into account:
+\begin{itemize}
+    \item \textbf{Manufacturability and robustness}: A cladding that is too thin is challenging to manufacture and more susceptible to failure due to external factors.
+    \item \textbf{Economic implications}: A higher plenum height increases the cost of production as it necessitates a taller reactor vessel.
+\end{itemize}
+
+To address these challenges, we adopted limits based on existing technology:
+\begin{itemize}
+    \item \textbf{Cladding thickness}: 80 to 120 micrometers.
+    \item \textbf{Plenum height}: 80 to 100 cm (approximately the same as the active fuel length).
+\end{itemize}
