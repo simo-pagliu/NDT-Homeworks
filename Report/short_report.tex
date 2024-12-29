@@ -168,6 +168,35 @@ The genetic algorithm produced optimal dimensions:
     \item The fuel-cladding gap remained stable throughout the operational cycle.
 \end{itemize}
 
+\subsection{Plutonium Redistribution}
+
+Plutonium redistribution occurs due to fuel restructuring during operation, leading to the formation of distinct zones within the fuel element:
+
+\begin{itemize}
+    \item \textbf{Central void}: Pores migrate outward, creating a void region and redistributing material.
+    \item \textbf{Columnar grains}: Formed by density changes and pore migration, resulting in localized Plutonium enrichment.
+    \item \textbf{Equiaxed grains}: Developed at high temperatures, with a reduction in Plutonium concentration due to grain growth.
+    \item \textbf{As-fabricated zone}: A stable region with minimal changes due to low temperatures.
+\end{itemize}
+
+This phenomenon results in variations in Plutonium concentration, initially uniform at 29\%. The central zone becomes enriched, the equiaxed zone is depleted, and the outer as-fabricated zone stabilizes at the original concentration. This redistribution, driven by thermal and structural effects, increases power density in the central region, potentially raising local fuel temperatures.
+
+Graphical results illustrate these phenomena: Figure~\ref{fig:Pu_Profile} highlights the radial distribution of Plutonium concentration.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{Pu_redistribution_profile.png}
+\caption{Radial distribution of Plutonium concentration (relative to the starting concentration) within the fuel structure.}
+\label{fig:Pu_Profile}
+\end{figure}
+
+\subsubsection*{Impact on Design and Operation}
+Plutonium enrichment in the central zone increases power density, leading to higher local temperatures. This effect must be managed to ensure the fuel remains below its melting point, particularly during extended operation. Redistribution can also exacerbate fuel swelling and impact cladding integrity, requiring careful consideration in the design phase.
+
+\subsection{Helium Embrittlement}
+\textit{To be completed.}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Critical Issues for Extended Operation}
 With the selected dimensions, we extended the computation to simulate an uptime of 2 years instead of the initial 1-year design. The results demonstrate the performance and safety of the fuel pin under prolonged operational conditions:
