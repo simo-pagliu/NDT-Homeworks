@@ -18,3 +18,10 @@ Report/report.nlo
 temperature_profile.gif
 static_temperature_profiles_with_boundaries.png
 axial_temperature_profiles_along_interfaces.png
+Report/short_report.fls
+Report/short_report.log
+Report/short_report.out
+Report/short_report.synctex.gz
+Report/short_report.toc
+Report/short_report.fdb_latexmk
+Report/short_report.aux
