@@ -91,7 +91,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Content
 \section{Introduction}
 The fuel pin design process involves:
 \begin{itemize}
@@ -99,62 +98,113 @@ The fuel pin design process involves:
     \item Verifying the design against limits for fuel melting, cladding temperature, yielding, and thermal creep.
     \item Identifying critical aspects if the irradiation time is doubled.
 \end{itemize}
-Most design specifications were provided. Missing data were sourced from relevant literature or handouts.
+Most design specifications were provided. Missing data were sourced from literature or handouts. The project aims to deliver a robust and safe design capable of handling a four-year operational cycle.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Assumptions and Methodology}
-\textbf{Material and Thermal Assumptions:}
+\subsection{Material and Thermal Assumptions}
 \begin{itemize}
     \item Material properties were treated as temperature-dependent, modeled using empirical correlations.
-    \item Axial profiles for power and neutron flux were assumed constant.
+    \item Axial profiles for power and neutron flux were assumed constant in time.
     \item Initial helium pressure and temperature in the fuel-cladding gap were as specified.
 \end{itemize}
-\textbf{Key Approximations:}
+
+\subsection{Key Approximations}
 \begin{itemize}
-    \item The fuel-cladding gap was treated as uniform, neglecting axial deformation.
-    \item Fission rate calculations assumed uniform flux and macroscopic cross sections derived from the JANIS database.
-    \item Plutonium redistribution and void swelling were modeled using analytical correlations.
+    \item Any axial expansion was neglected.
+    \item Fission rate calculations for the sole purpose of fission gas release assumed uniform flux and macroscopic cross sections derived from the JANIS database.
+    \item The time to rupture due to thermal creep was calculated assuming steady-state conditions and using the Larson-Miller parameter.
 \end{itemize}
 
+\subsection{Computational Methods and Findings}
+The design utilized a genetic algorithm for optimization.
+
+During the dimensioning process, it was observed that the cladding thickness is strongly influenced by the operational time specified in the fitness function. For short cycles, such as one year, the algorithm tends to recommend a thinner cladding, which may not be suitable for long-term operation. To address this limitation, even though the task focused on a one-year design, the dimensioning was based on an expected four-year fuel cycle, which is more representative of typical fast reactor operation.
+
+This conservative approach ensures improved reliability and provides additional safety margins over the lifecycle of the fuel pin.
+
+It was also observed that the time to rupture depends on the height of the plenum. A lower plenum height leads to higher internal pressure, which in turn reduces the time to rupture. Consequently, the algorithm’s optimization tends to converge towards the maximum plenum height and minimum cladding thickness within the specified exploration range.
+
+Given these trends, additional considerations were taken into account:
+\begin{itemize}
+    \item \textbf{Manufacturability and robustness}: A cladding that is too thin is challenging to manufacture and more susceptible to failure due to external factors.
+    \item \textbf{Economic implications}: A higher plenum height increases the cost of production as it necessitates a taller reactor vessel.
+\end{itemize}
+
+To address these challenges, we adopted limits based on existing technology:
+\begin{itemize}
+    \item \textbf{Cladding thickness}: 80 to 120 micrometers.
+    \item \textbf{Plenum height}: 80 to 100 cm (approximately the same as the active fuel length).
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Design Results and Verification}
 \subsection{Preliminary Sizing}
-The genetic algorithm was used to optimize the cladding thickness and plenum height while maintaining performance and safety:
+The genetic algorithm produced optimal dimensions:
 \begin{itemize}
-    \item \textbf{Cladding Thickness:} 80–120 $\mu$m.
-    \item \textbf{Plenum Height:} 80–100 cm.
+    \item \textbf{Cladding Thickness:} 100 $\mu$m.
+    \item \textbf{Plenum Height:} 90 cm.
 \end{itemize}
 
-\subsection{Verification}
+\subsection{Verification Results}
 \textbf{Thermal Performance:}
 \begin{itemize}
-    \item The margin to melting of the fuel was validated under steady-state conditions.
-    \item Axial and radial temperature profiles confirmed acceptable temperature gradients in the cladding and fuel.
+    \item \textbf{Maximum Fuel Temperature:} 2480 K (below melting point).
+    \item \textbf{Maximum Cladding Temperature:} 912 K (below design limit).
 \end{itemize}
-\textbf{Mechanical Analysis:}
+
+\textbf{Mechanical Performance:}
 \begin{itemize}
-    \item Stresses in the cladding were calculated using Mariotte and Lamé criteria.
-    \item The time to rupture due to thermal creep was evaluated using the Larson-Miller parameter.
+    \item \textbf{Plenum Pressure:} 2.79 MPa (within limits).
+    \item \textbf{Maximum Volumetric Swelling:} 2.9\% (acceptable).
+    \item \textbf{Time to Rupture:} 51.98 years (sufficient safety margin).
 \end{itemize}
+
 \textbf{Key Findings:}
 \begin{itemize}
-    \item The fuel-cladding gap remained within the design range throughout operation.
-    \item Cladding stresses remained below yielding limits.
-    \item The design provided sufficient safety margins for thermal creep and mechanical integrity.
+    \item The design provides adequate safety margins for all key parameters.
+    \item Fission gas release (FGR) was contained within acceptable limits.
+    \item The fuel-cladding gap remained stable throughout the operational cycle.
 \end{itemize}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Critical Issues for Extended Operation}
-If the irradiation time is doubled:
-\begin{itemize}
-    \item Increased fission gas release (FGR) will elevate internal pressure and reduce thermal conductivity in the gap.
-    \item Cladding thickness constraints must be re-evaluated to prevent long-term creep failure.
-    \item The redistribution of Plutonium could lead to localized power peaking, necessitating further analysis.
-\end{itemize}
-Conservative limits on cladding thickness and plenum height were implemented to address these issues.
+With the selected dimensions, we extended the computation to simulate an uptime of 2 years instead of the initial 1-year design. The results demonstrate the performance and safety of the fuel pin under prolonged operational conditions:
 
+\begin{itemize}
+    \item \textbf{Maximum Fuel Temperature:} 2553.260 K (increased from 2480.096 K).
+    \item \textbf{Maximum Cladding Temperature:} 912.696 K (unchanged).
+    \item \textbf{Plenum Pressure:} 5.409 MPa (limit exceeded, increased from 2.792 MPa).
+    \item \textbf{Maximum Instantaneous Cladding Plastic Strain:} 0.000\% (unchanged).
+    \item \textbf{Maximum Cladding Volumetric Swelling:} 20.118\% (limit exceeded, increased significantly from 2.900\%).
+    \item \textbf{Maximum Coolant Velocity:} 5.558 m/s (increased from 4.779 m/s).
+    \item \textbf{Minimum Gap Thickness:} 367.927 microns (decreased from 386.495 microns).
+    \item \textbf{Burnup:} 128.268 GWd/tHM (increased from 64.134 GWd/tHM).
+    \item \textbf{Fuel Yielding Due to Swelling:} 8.979\% (increased from 4.489\%).
+    \item \textbf{Time to Rupture:} 4.23 years (decreased significantly from 51.98 years).
+\end{itemize}
+
+\textbf{Comparison and Observations:}
+\begin{itemize}
+    \item The maximum fuel temperature increased slightly, indicating a higher thermal load on the fuel, likely due to increased burnup.
+    \item The plenum pressure and cladding volumetric swelling both exceeded design limits, indicating that the fuel pin design is insufficient for extended irradiation cycles without adjustments.
+    \item The burnup doubled, as expected
+    \item The time to rupture decreased drastically from 51.98 years to 4.23 years, showing that thermal creep becomes a significant concern under these conditions.
+    \item While the coolant velocity increased, it remained within acceptable operational ranges, highlighting that the thermal-hydraulic design is not a limiting factor in this scenario.
+    \item The decreased gap thickness indicates increased mechanical interaction between the fuel and cladding, which can exacerbate the risks associated with swelling and fuel-cladding mechanical contact.
+\end{itemize}
+
+In summary, the significant rise in cladding swelling, plenum pressure, and reduced time to rupture indicate that this design requires further optimization to handle extended operation cycles safely.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 The finalized design meets all specified requirements, ensuring safety and reliability for up to a four-year fuel cycle. Conservative assumptions and thorough validation steps provided additional safety margins. The design demonstrates robustness under normal and extended operational conditions.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Appendix}
-All supporting code is available in the following repository:
+All supporting code is available in the following repository: 
 \href{https://github.com/simo-pagliu/NDT-Homeworks}{\textcolor{blue}{NDT-Homeworks Repository}}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

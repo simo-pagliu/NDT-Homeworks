@@ -11,14 +11,26 @@ The finalized design dimensions are as follows:
 With the selected dimensions, we extended the computation to simulate an uptime of 2 years instead of the initial 1-year design. The results demonstrate the performance and safety of the fuel pin under prolonged operational conditions:
 
 \begin{itemize}
-    \item \textbf{Maximum Fuel Temperature:} 2480.096 K.
-    \item \textbf{Maximum Cladding Temperature:} 912.696 K.
-    \item \textbf{Plenum Pressure:} 2.792 MPa.
-    \item \textbf{Maximum Instantaneous Cladding Plastic Strain:} 0.000\%.
-    \item \textbf{Maximum Cladding Volumetric Swelling:} 2.900\%.
-    \item \textbf{Maximum Coolant Velocity:} 4.779 m/s.
-    \item \textbf{Minimum Gap Thickness:} 386.495 microns.
-    \item \textbf{Burnup:} 64.134 GWd/tHM.
-    \item \textbf{Fuel Yielding Due to Swelling:} 4.489\%.
-    \item \textbf{Time to Rupture:} 51.98 years.
+    \item \textbf{Maximum Fuel Temperature:} 2553.260 K (increased from 2480.096 K).
+    \item \textbf{Maximum Cladding Temperature:} 912.696 K (unchanged).
+    \item \textbf{Plenum Pressure:} 5.409 MPa (limit exceeded, increased from 2.792 MPa).
+    \item \textbf{Maximum Instantaneous Cladding Plastic Strain:} 0.000\% (unchanged).
+    \item \textbf{Maximum Cladding Volumetric Swelling:} 20.118\% (limit exceeded, increased significantly from 2.900\%).
+    \item \textbf{Maximum Coolant Velocity:} 5.558 m/s (increased from 4.779 m/s).
+    \item \textbf{Minimum Gap Thickness:} 367.927 microns (decreased from 386.495 microns).
+    \item \textbf{Burnup:} 128.268 GWd/tHM (increased from 64.134 GWd/tHM).
+    \item \textbf{Fuel Yielding Due to Swelling:} 8.979\% (increased from 4.489\%).
+    \item \textbf{Time to Rupture:} 4.23 years (decreased significantly from 51.98 years).
 \end{itemize}
+
+\textbf{Comparison and Observations:}
+\begin{itemize}
+    \item The maximum fuel temperature increased slightly, indicating a higher thermal load on the fuel, likely due to increased burnup.
+    \item The plenum pressure and cladding volumetric swelling both exceeded design limits, indicating that the fuel pin design is insufficient for extended irradiation cycles without adjustments.
+    \item The burnup doubled, as expected
+    \item The time to rupture decreased drastically from 51.98 years to 4.23 years, showing that thermal creep becomes a significant concern under these conditions.
+    \item While the coolant velocity increased, it remained within acceptable operational ranges, highlighting that the thermal-hydraulic design is not a limiting factor in this scenario.
+    \item The decreased gap thickness indicates increased mechanical interaction between the fuel and cladding, which can exacerbate the risks associated with swelling and fuel-cladding mechanical contact.
+\end{itemize}
+
+In summary, the significant rise in cladding swelling, plenum pressure, and reduced time to rupture indicate that this design requires further optimization to handle extended operation cycles safely.
