@@ -31,7 +31,6 @@
 \sloppy
 \hbadness=10000
 
-
 % Define custom colors
 \definecolor{cherenkovblue}{RGB}{55, 139, 230}
 
@@ -85,7 +84,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Table of contents
-% it then switches to the post-index page style
+% Switches to the post-index page style after TOC
 \tableofcontents
 \newpage
 \pagestyle{post-index}
@@ -93,48 +92,47 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Content
-% Add files for content here
+% Add content files here
 
 % INTRODUCTION
 \section{Introduction}
-This report presents the preliminary design and verification of a fuel pin for a sodium-cooled fast reactor, as specified in the assignment. \\
-The analysis involves calculations for material properties, thermal-hydraulic conditions, and mechanical stress limits. \\
-We verify the robustness of our models and justify the assumptions made throughout the process.
-\input{./introduction/problem_description} % Chat
-\input{./introduction/assumptions} %
-\subsection{Verification of Models}
-Each part of the analysis code has been checked to confirm it behaves as expected under the defined conditions. \\
-The verification process is detailed in the following sections.
+This report presents the preliminary design and verification of a fuel pin for a sodium-cooled fast reactor, as specified in the assignment. The analysis encompasses calculations for material properties, thermal-hydraulic conditions, and mechanical stress limits.
 
+The robustness of the developed models is verified, and the assumptions made throughout the process are clearly justified.
+
+\input{./introduction/problem_description} % Problem description
+\input{./introduction/assumptions} % Assumptions made
 
 % VERIFICATION
-\input{./verification/thermal-hydraulics-analysis.tex} % Chat
-\input{./verification/temperature_profiles.tex} % Simo
-\input{./verification/thermal_expansion.tex} % Lisa
-\input{./verification/void_swelling.tex} % Simo
-\input{./verification/fission_gas.tex} % 
-\input{./verification/restructuring.tex} % Tommy
-\input{./verification/stress_analysis.tex} %
+\section{Verification of Models}
+Each component of the analysis code was validated to confirm it behaves as expected under the defined conditions. The verification process is detailed in the following sections.
+
+\input{./verification/thermal-hydraulics-analysis.tex} % Thermal-hydraulics analysis
+\input{./verification/temperature_profiles.tex} % Temperature profiles
+\input{./verification/thermal_expansion.tex} % Thermal expansion
+\input{./verification/void_swelling.tex} % Void swelling
+\input{./verification/fission_gas.tex} % Fission gas behavior
+\input{./verification/restructuring.tex} % Fuel restructuring
+\input{./verification/stress_analysis.tex} % Stress analysis
 
 % OTHER EFFECTS
 \section{Other Effects}
-Additional phenomena, such as plutonium redistribution and helium embrittlement, 
-are considered to provide a broader understanding of the fuel pin's behavior.
+Additional phenomena, such as Plutonium redistribution and helium embrittlement, are considered to provide a broader understanding of the fuel pin's behavior.
 
-\input{./other/pu_redistribution.tex} % Tommy
-\input{./other/he_embrittlement.tex} %
+\input{./other/pu_redistribution.tex} % Plutonium redistribution
+\input{./other/he_embrittlement.tex} % Helium embrittlement
 
 % DESIGN & CONCLUSION
-\section{Design results and conclusion}
-The study presents the design outcomes, their implications, 
-and the conclusions drawn on the feasibility and safety of the proposed design.
+\section{Design Results and Conclusion}
+This section presents the design outcomes, their implications, and the conclusions drawn on the feasibility and safety of the proposed design.
 
-\input{./design/code.tex} % Simo
-\input{./design/findings.tex} % 
-\input{./design/results.tex} %
+\input{./design/code.tex} % Code implementation
+\input{./design/findings.tex} % Findings and observations
+\input{./design/results.tex} % Finalized results
 
 \appendix
-All of the code can be found in the following Github repository:
-\url{https://github.com/simo-pagliu/NDT-Homeworks}
+\section*{Appendix}
+All of the code can be found in the following GitHub repository: 
+\href{https://github.com/simo-pagliu/NDT-Homeworks}{\textcolor{cherenkovblue}{NDT-Homeworks Repository}}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
