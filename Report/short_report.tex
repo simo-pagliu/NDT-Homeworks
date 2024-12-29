@@ -105,37 +105,88 @@ Most design specifications were provided. Missing data were sourced from literat
 \section{Assumptions and Methodology}
 \subsection{Material and Thermal Assumptions}
 \begin{itemize}
-    \item Material properties were treated as temperature-dependent, modeled using empirical correlations.
     \item Axial profiles for power and neutron flux were assumed constant in time.
-    \item Initial helium pressure and temperature in the fuel-cladding gap were as specified.
+    \item Initial helium pressure and temperature in the fuel-cladding gap were taken as specified.
 \end{itemize}
 
-\subsection{Key Approximations}
+\subsection{Fission Gas Release Model}
 \begin{itemize}
-    \item Any axial expansion was neglected.
-    \item Fission rate calculations for the sole purpose of fission gas release assumed uniform flux and macroscopic cross sections derived from the JANIS database.
-    \item The time to rupture due to thermal creep was calculated assuming steady-state conditions and using the Larson-Miller parameter.
+    \item \textbf{Domain size:} Grain size $d_g = 10 \, \mu \text{m}$.
+    \item \textbf{Diffusivity model:} Based on Matzke (1980):
+    \[
+    D_{\text{eff}} [\text{m}^2/\text{s}] = D_0 \cdot \exp\left(-\frac{Q}{T}\right), \quad \text{where } D_0 = 5 \cdot 10^{-8} \text{ m}^2/\text{s}, \, Q = 40262 \text{, and } T \text{ is in Kelvin.}
+    \]
+    \item \textbf{Reference temperature:} Average of axial temperatures at three key positions (first slice, mid-plane, last slice).
+    \item \textbf{Fission yield:} Combined yield for Xe and Kr, $y = 30\%$.
+    \item \textbf{Fission rate:} $\dot{F} = \Sigma_f \cdot \phi_{\text{avg}}$, where $\Sigma_f$ is the macroscopic fission cross section and $\phi_{\text{avg}}$ is the average neutron flux.
+    \item \textbf{Initial conditions:} $P(0) = 0$ and $G_M(0) = 0$.
+    \item \textbf{Boundary conditions (Booth, 1957):}
+    \begin{itemize}
+        \item Surface: Perfect sink, $G_M(a) = 0$.
+        \item Center: Symmetry, $\frac{dG_M(0)}{dr} = 0$.
+    \end{itemize}
+    \item \textbf{Steady-state assumption:} Due to the short timescale of the phenomenon, time derivatives are neglected in the equations for the steady-state solution.
 \end{itemize}
+
+\subsection{Stress Analysis on the Cladding}
+The stress distribution in the cladding was calculated using elasticity equations for cylindrical geometries, under the assumptions of orthocylindricity and axial symmetry. Several criteria were applied to evaluate the cladding's mechanical performance:
+
+\subsubsection{Mariotte Criterion}
+\begin{itemize}
+    \item Evaluates the hoop stress at the mid-wall of the cladding.
+    \item Used to check for yielding. Preliminary calculations indicated that the Mariotte stress is slightly higher than the Lamé stress, although the latter imposes stricter criteria.
+\end{itemize}
+
+\subsubsection{Lamé Criterion}
+\begin{itemize}
+    \item Considers radial, hoop, and axial stresses.
+    \item The radial stress is computed using the pipe equation with a superposition solution:
+    \[
+    \frac{d}{dr} \left( r^3 \cdot \frac{d\sigma_r(r)}{dr} \right) + \frac{\alpha E}{1-\nu} \cdot \frac{dT(r)}{dr} = 0
+    \]
+    \item Using equilibrium relations, the hoop stress is determined as:
+    \[
+    \sigma_\theta = \sigma_r + \frac{d\sigma_r}{dr}
+    \]
+    \item The Tresca criterion is applied for verification, ensuring compliance with yield and ultimate strength limits. The Lamé criterion was found to impose limits approximately 33\% stricter than the Mariotte criterion.
+\end{itemize}
+
+\subsubsection{Plastic Strain Check}
+\begin{itemize}
+    \item Plastic strain is flagged if either the Mariotte or Lamé criterion predicts stresses exceeding the yield strength.
+    \item No significant plastic strain was observed, as both criteria were satisfied under the analyzed conditions.
+\end{itemize}
+
+\subsubsection{Thermal Creep (Time to Rupture)}
+\begin{itemize}
+    \item The rupture time due to thermal creep was evaluated using the Larson-Miller Parameter (LMP), based on operating stresses and temperatures.
+    \item Even under conservative assumptions, the calculated time to rupture showed sufficient margins, indicating minimal risk of creep-related failure.
+\end{itemize}
+
 
 \subsection{Computational Methods and Findings}
 The design utilized a genetic algorithm for optimization.
 
-During the dimensioning process, it was observed that the cladding thickness is strongly influenced by the operational time specified in the fitness function. For short cycles, such as one year, the algorithm tends to recommend a thinner cladding, which may not be suitable for long-term operation. To address this limitation, even though the task focused on a one-year design, the dimensioning was based on an expected four-year fuel cycle, which is more representative of typical fast reactor operation.
+During the dimensioning process, it was observed that cladding thickness is strongly influenced by the operational time in the fitness function. For short cycles, such as one year, the algorithm recommends thinner cladding, unsuitable for long-term operation. To address this, the design was based on an expected four-year fuel cycle, which is representative of typical fast reactor operation.
 
-This conservative approach ensures improved reliability and provides additional safety margins over the lifecycle of the fuel pin.
+This conservative approach ensures reliability and provides additional safety margins over the fuel pin lifecycle. 
 
-It was also observed that the time to rupture depends on the height of the plenum. A lower plenum height leads to higher internal pressure, which in turn reduces the time to rupture. Consequently, the algorithm’s optimization tends to converge towards the maximum plenum height and minimum cladding thickness within the specified exploration range.
+\textbf{Key Observations:}
+\begin{itemize}
+    \item The time to rupture decreases significantly with lower plenum height due to higher internal pressure.
+    \item The optimization process tends to converge toward maximum plenum height and minimum cladding thickness.
+\end{itemize}
 
 Given these trends, additional considerations were taken into account:
 \begin{itemize}
-    \item \textbf{Manufacturability and robustness}: A cladding that is too thin is challenging to manufacture and more susceptible to failure due to external factors.
-    \item \textbf{Economic implications}: A higher plenum height increases the cost of production as it necessitates a taller reactor vessel.
+    \item \textbf{Manufacturability and robustness:} Thin cladding is challenging to produce and more prone to mechanical failure.
+    \item \textbf{Economic implications:} Increasing plenum height raises reactor vessel production costs.
 \end{itemize}
 
-To address these challenges, we adopted limits based on existing technology:
+\textbf{Final Constraints:}
 \begin{itemize}
-    \item \textbf{Cladding thickness}: 80 to 120 micrometers.
-    \item \textbf{Plenum height}: 80 to 100 cm (approximately the same as the active fuel length).
+    \item \textbf{Cladding thickness:} 80 to 120 micrometers.
+    \item \textbf{Plenum height:} 80 to 100 cm (approximately the same as the active fuel length).
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
