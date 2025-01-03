@@ -65,7 +65,6 @@ t_span = (t_0, t_f)
 t_eval = np.linspace(t_0, t_f, 1000)
 
 # Neutron flux data
-thermal_flux = 1e13  # Thermal flux value (given constant)
 peak_flux = 6.1e15  # n/cm²/s at the peak node
 per_term_flux = 0
 thermal_flux = per_term_flux* peak_flux  # Assumed fraction of thermal flux
@@ -86,9 +85,10 @@ average_helium_contributions = np.zeros_like(t_eval)
 
 for fast_flux in flux_values:
     # Bateman system of equations with helium contributions
+    
     def Bateman_sys_with_He_contrib(t, state):
         N_Fe, N_Cr, N_58Ni, N_59Ni, N_extraNi, N_B10, N_He, He_Fe, He_Cr, He_Ni_fast, He_Ni_therm, He_B10 = state
-        
+        thermal_flux = 6.1e13  # HYPOTHESIS: Thermal flux value (given constant)
         # Reaction rates
         dN_58Ni_dt = -cross_sections["Ni58_fast"] * fast_flux * N_58Ni
         dN_59Ni_dt = (
@@ -222,7 +222,25 @@ average_helium_per_node = tot_at_He_V / num_nodes
 # Calculate average helium concentration in ppm
 average_helium_concentration_ppm = (average_helium_per_node / total_initial_atoms) * 1e6
 # Print the results
-print(f"Average helium concentration per node: {average_helium_concentration_ppm:.2f} ppm")
+
+He_contrib_Fe_per_node = He_contrib_Fe[-1] / num_nodes
+average_helium_concentration_Fe_ppm = (He_contrib_Fe_per_node/ total_initial_atoms) * 1e6
+He_contrib_Cr_per_node = He_contrib_Cr[-1] / num_nodes
+average_helium_concentration_Cr_ppm = (He_contrib_Cr_per_node / total_initial_atoms) * 1e6
+He_contrib_Ni_therm_per_node = He_contrib_Ni_therm[-1] / num_nodes
+average_helium_concentration_Ni_therm_ppm = (He_contrib_Ni_therm_per_node / total_initial_atoms) * 1e6
+He_contrib_Ni_fast_per_node = He_contrib_Ni_fast[-1] / num_nodes
+average_helium_concentration_Ni_fast_ppm = (He_contrib_Ni_fast_per_node / total_initial_atoms) * 1e6
+He_contrib_B10_per_node = He_contrib_B10[-1] / num_nodes
+average_helium_concentration_B10_ppm = (He_contrib_B10_per_node / total_initial_atoms) * 1e6
+
+# Print the helium production contributions and final average concentration
+print(f"He from Fe: {average_helium_concentration_Fe_ppm:.2f} ppm")
+print(f"He from Cr: {average_helium_concentration_Cr_ppm:.2f} ppm")
+print(f"He from Ni (fast): {average_helium_concentration_Ni_fast_ppm:.2f} ppm")
+print(f"He from Ni (thermal): {average_helium_concentration_Ni_therm_ppm:.2f} ppm")
+print(f"He from B-10: {average_helium_concentration_B10_ppm:.2f} ppm")
+print(f"Avarage total helium concentration: {average_helium_concentration_ppm:.2f} ppm")
 # Calculate average helium production
 average_helium_production = tot_at_He / num_nodes
 # Print the final average value
