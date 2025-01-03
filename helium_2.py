@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 from matplotlib import ticker
 from scipy.integrate import solve_ivp
 
@@ -7,9 +8,9 @@ from scipy.integrate import solve_ivp
 # Constants
 avogadro_number = 6.022e23  # atoms/mol
 density_steel = 7.9  # g/cm³ (approximate for stainless steel)
-time_seconds = 365 * 24 * 3600  # 1 year in seconds
+#time_seconds = 365 * 24 * 3600  # 1 year in seconds
 # Constants
-# time_seconds = 2 * 365 * 24 * 3600  # 2 years in seconds
+time_seconds = 2 * 365 * 24 * 3600  # 2 years in seconds
 
 # Cladding composition (wt.%)
 composition = {
@@ -171,6 +172,7 @@ for fast_flux in flux_values:
         + He_contrib_B10[-1]
     )
     
+    
     # Add to total helium production
     total_helium_production += helium_node_total
     # Calculate the average helium contributions over all nodes
@@ -196,7 +198,31 @@ for fast_flux in flux_values:
     tot_at_He += He_contrib_Fe[-1] + He_contrib_Cr[-1] + He_contrib_Ni_fast[-1] + He_contrib_Ni_therm[-1] + He_contrib_B10[-1]
 
 
+# Calculate the total initial number of atoms
+total_initial_atoms = (
+    N_Fe_0 
+    + N_Cr_0 
+    + N_Ni_0 
+    + N_58Ni_0 
+    + N_59Ni_0 
+    + N_extraNi_0 
+    + N_B10_0 
+    + N_He_0
+)
 
+
+# Dimensions of the fuel column
+fuel_pellet_outer_diameter = 5.42e-3  # meters
+fuel_column_height = 0.85  # meters
+# Calculate the volume of the fuel column
+fuel_pin_volume = math.pi * 1e6 * (fuel_pellet_outer_diameter / 2) ** 2 * fuel_column_height
+tot_at_He_V = tot_at_He / fuel_pin_volume
+# Calculate average helium production per node
+average_helium_per_node = tot_at_He_V / num_nodes
+# Calculate average helium concentration in ppm
+average_helium_concentration_ppm = (average_helium_per_node / total_initial_atoms) * 1e6
+# Print the results
+print(f"Average helium concentration per node: {average_helium_concentration_ppm:.2f} ppm")
 # Calculate average helium production
 average_helium_production = tot_at_He / num_nodes
 # Print the final average value
