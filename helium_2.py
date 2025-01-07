@@ -88,7 +88,7 @@ for fast_flux in flux_values:
     
     def Bateman_sys_with_He_contrib(t, state):
         N_Fe, N_Cr, N_58Ni, N_59Ni, N_extraNi, N_B10, N_He, He_Fe, He_Cr, He_Ni_fast, He_Ni_therm, He_B10 = state
-        thermal_flux = 6.1e13  # HYPOTHESIS: Thermal flux value (given constant)
+        thermal_flux = fast_flux # HYPOTHESIS
         # Reaction rates
         dN_58Ni_dt = -cross_sections["Ni58_fast"] * fast_flux * N_58Ni
         dN_59Ni_dt = (
