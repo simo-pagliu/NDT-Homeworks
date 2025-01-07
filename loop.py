@@ -869,7 +869,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
             plastic_strain.append(0) # No plastic strain
         #####################################
         
-    return plastic_strain, time_to_rupture
+    return plastic_strain, time_to_rupture, Stress
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
@@ -909,7 +909,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     He_percentage, Gas_Pressure = fission_gas_production(h_plenum, params["Fuel_Proprieties"], params["ThermoHydraulics"], Geometrical_Data, previous_T_map)
 
     # Plastic Strain
-    Plastic_Strain, Time_To_Rupture = mechanical_analysis(params["ThermoHydraulics"], params["Cladding_Proprieties"], Geometrical_Data, previous_T_map, Gas_Pressure)
+    Plastic_Strain, Time_To_Rupture, Stress = mechanical_analysis(params["ThermoHydraulics"], params["Cladding_Proprieties"], Geometrical_Data, previous_T_map, Gas_Pressure)
 
     # Temperature Map
     T_map, Coolant_Velocity = temperature_map(params["Coolant_Proprieties"], params["Cladding_Proprieties"], params["Helium_Proprieties"], 
@@ -917,7 +917,7 @@ def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percent
     idx_fuel = np.argmin(np.abs(T_map.r[5, :] - Geometrical_Data.fuel_outer_diameter[0]/2))
     T_fuel_out = T_map.T[5, idx_fuel]
 
-    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell, Plastic_Strain, Time_To_Rupture
+    return T_map, T_fuel_out, Geometrical_Data, He_percentage, Gas_Pressure, Coolant_Velocity, void_swell, Plastic_Strain, Time_To_Rupture, Stress
 
 
 
@@ -950,7 +950,7 @@ def main(delta, h_plenum, years, settings):
         while residual > settings['residual_threshold'] and  Closure == False and j<settings['run_limiter']:
             j += 1
 
-            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Plastic_Strain, Time_to_Rupture = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
+            T_map, T_fuel_out, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, Plastic_Strain, Time_to_Rupture, Stress = update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map)
 
             residual = np.mean(np.abs(T_map.T - previous_T_map.T)) / np.mean(previous_T_map.T)
             previous_T_map = copy.deepcopy(T_map)
@@ -966,4 +966,4 @@ def main(delta, h_plenum, years, settings):
         T_map = previous_T_map
         print("Hot run disabled, disabling print results, enabling plotting")
 
-    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, Burnup, Plastic_Strain, Time_to_Rupture
+    return T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, Burnup, Plastic_Strain, Time_to_Rupture, Stress
