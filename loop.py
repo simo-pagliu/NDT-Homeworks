@@ -806,6 +806,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
     T_cladding_inner = [get_temperature_at_point(h, r, T_map) for h, r in zip(Geometrical_Data.h_values, Geometrical_Data.cladding_outer_diameter)]
     plastic_strain = []
     time_to_rupture = []
+    stress_Vector = []
     for i, T_ref in enumerate(T_cladding_inner):
         Yield_stress = Cladding_Proprieties.Yield_Stress(T_ref-273.15)
         Ultimate_Tensile_Strength = Cladding_Proprieties.Ultimate_Tensile_Strength(T_ref-273.15)
@@ -823,44 +824,55 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
         flag = True # Set flag for plastic strain on True by default
         
         #####################################
-        # Mariotte Criterion
-        Hoop_stress = r_cladding_mid * (pressure_in - pressure_out) * 1e-6 / Geometrical_Data.thickness_cladding[i] 
-        if Hoop_stress < Yield_stress:
-            flag = False
+        # Mariotte Solution
+        # if:
+        # hp. axial symmetry
+        # hp. orthocylindricity
+        # these streses are the pricipal stresses (s1, s2, s3)
+        Mariotte_Theta = r_cladding_mid * (pressure_in - pressure_out) / Geometrical_Data.thickness_cladding[i]
+        Mariotte_Z = Mariotte_Theta / 2
+        Mariotte_R = - (pressure_in - pressure_out) / 2
         #####################################
         
         #####################################
-        # Lamè Criterion
-        Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
-        Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
-        # Expressions obtained from stress analysis in Verification.ipynb
-        stress_r = -Costant_1/(2*r_cladding_mid**2) + Costant_2
-        sigma_theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
-        sigma_z = 2*Costant_2
+        # # Lamè Solution
+        # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
+        # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
+        # Not considered for dimentioning to be conservative
+        # Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
+        # Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
+        # # Expressions obtained from stress analysis in Verification.ipynb
+        # Lame_R = -Costant_1/(2*r_cladding_mid**2) + Costant_2
+        # Lame_Theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
+        # Lame_Z = 2*Costant_2
+        # Lame = [Lame_R, Lame_Theta, Lame_Z]
+        #####################################
+        
+        #####################################
+        # Faliure Verification
+        
         # Take the maximum difference between couples of the three stresses
-        Lame_stress = max([abs(stress_r - sigma_theta), abs(stress_r - sigma_z), abs(sigma_theta - sigma_z)]) 
-        Lame_stress = Lame_stress * 1e-6 # MPa
-        if Lame_stress < 2/3*Yield_stress and Lame_stress < 1/3*Ultimate_Tensile_Strength:
+        # TRESCA --> Is easier, is slightly conservative
+        Stress_equivalent = max([abs(Mariotte_R - Mariotte_Theta), abs(Mariotte_R - Mariotte_Z), abs(Mariotte_Theta - Mariotte_Z)]) 
+        Stress_equivalent = Stress_equivalent * 1e-6 # MPa
+        stress_Vector.append(Stress_equivalent)
+
+        # Verification of allowable stress
+        # By using 2/3 of the Yield stress we make the Mariotte criterion conservative on this front as well
+        if Stress_equivalent < 2/3*Yield_stress and Stress_equivalent < 1/3*Ultimate_Tensile_Strength:
             flag = False
         #####################################
-        
-        # Take as reference stress the maximum between the two criteria
-        Stress = max(Hoop_stress, Lame_stress)
         
         #####################################
         # Evaluate effects:
         # Plastic Strain
         # Time to rupture due to creep
-        #
-        # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
-        # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
-        # but the limits on the Lamè criterion are much more restrictive (~33% more restrictive)
         if flag:
             plastic_strain.append(10) # Placeholder value to trigger the warning
             time_to_rupture.append(0) # No evaluation of the time to rupture since we are in the plastic regime
         else:
             # No plastic strain --> Evaluate rupture due to creep
-            LM_parameter = (2060 - Stress)/0.095 # Larson-Miller Parameter with the equivalent stress
+            LM_parameter = (2060 - Stress_equivalent)/0.095 # Larson-Miller Parameter with the equivalent stress
 
             temp = 10**((LM_parameter / T_ref) - 17.125) # hours
             temp = temp / (365*24) # convert to years
@@ -869,7 +881,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
             plastic_strain.append(0) # No plastic strain
         #####################################
         
-    return plastic_strain, time_to_rupture, Stress
+    return plastic_strain, time_to_rupture, stress_Vector
 
 def update_temperatures(params, Geometrical_Data, T_fuel_out, Burnup, He_percentage, h_plenum, previous_T_map):
     """
