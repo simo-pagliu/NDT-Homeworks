@@ -828,6 +828,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
         # if:
         # hp. axial symmetry
         # hp. orthocylindricity
+        # then:
         # these streses are the pricipal stresses (s1, s2, s3)
         Mariotte_Theta = r_cladding_mid * (pressure_in - pressure_out) / Geometrical_Data.thickness_cladding[i]
         Mariotte_Z = Mariotte_Theta / 2
@@ -854,7 +855,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
         # Take the maximum difference between couples of the three stresses
         # TRESCA --> Is easier, is slightly conservative
         Stress_equivalent = max([abs(Mariotte_R - Mariotte_Theta), abs(Mariotte_R - Mariotte_Z), abs(Mariotte_Theta - Mariotte_Z)]) 
-        Stress_equivalent = Stress_equivalent * 1e-6 # MPa
+        Stress_equivalent = (Stress_equivalent) * 1e-6 # MPa
         stress_Vector.append(Stress_equivalent)
 
         # Verification of allowable stress

@@ -98,7 +98,7 @@ The fuel pin design process involves:
     \item Verifying the design against limits for fuel melting, cladding temperature, yielding, and thermal creep.
     \item Identifying critical aspects if the irradiation time is doubled.
 \end{itemize}
-Most design specifications were provided. Missing data were sourced from literature or handouts. The project aims to deliver a robust and safe design capable of handling a four-year operational cycle.
+Most design specifications were provided. Missing data were sourced from literature or handouts. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -108,6 +108,13 @@ Most design specifications were provided. Missing data were sourced from literat
     \item Axial profiles for power and neutron flux were assumed constant in time.
     \item Initial helium pressure and temperature in the fuel-cladding gap were taken as specified.
 \end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{temperature_profile.png}
+    \caption{Radial temperature profile within the fuel pin. The profile shows the temperature distribution at the middle node.}
+    \label{fig:Temperature_Profile}
+\end{figure}
 
 \subsection{Fission Gas Release Model}
 \begin{itemize}
@@ -127,34 +134,19 @@ Most design specifications were provided. Missing data were sourced from literat
     \end{itemize}
     \item \textbf{Steady-state assumption:} Due to the short timescale of the phenomenon, time derivatives are neglected in the equations for the steady-state solution.
 \end{itemize}
-
+    
 \subsection{Stress Analysis on the Cladding}
-The stress distribution in the cladding was calculated using elasticity equations for cylindrical geometries, under the assumptions of orthocylindricity and axial symmetry. Several criteria were applied to evaluate the cladding's mechanical performance:
+The stress distribution in the cladding was calculated using pipe equations for cylindrical geometries, under the assumptions of orthocylindricity and axial symmetry.
 
-\subsubsection{Mariotte Criterion}
-\begin{itemize}
-    \item Evaluates the hoop stress at the mid-wall of the cladding.
-    \item Used to check for yielding. Preliminary calculations indicated that the Mariotte stress is slightly higher than the Lamé stress, although the latter imposes stricter criteria.
-\end{itemize}
+\subsubsection{Mariotte Stresses}
+Given the hypotesis we can assume the radial, hoop and axial stresses are the principal stresses.  
+We also verified that the simplified Mariotte approach is consistent with the more complex Lamé solution. For the design process we used Mariotte to optimize computational effort.  
 
-\subsubsection{Lamé Criterion}
+\subsubsection{Stress Checks}
 \begin{itemize}
-    \item Considers radial, hoop, and axial stresses.
-    \item The radial stress is computed using the pipe equation with a superposition solution:
-    \[
-    \frac{d}{dr} \left( r^3 \cdot \frac{d\sigma_r(r)}{dr} \right) + \frac{\alpha E}{1-\nu} \cdot \frac{dT(r)}{dr} = 0
-    \]
-    \item Using equilibrium relations, the hoop stress is determined as:
-    \[
-    \sigma_\theta = \sigma_r + \frac{d\sigma_r}{dr}
-    \]
-    \item The Tresca criterion is applied for verification, ensuring compliance with yield and ultimate strength limits. The Lamé criterion was found to impose limits approximately 33\% stricter than the Mariotte criterion.
-\end{itemize}
-
-\subsubsection{Plastic Strain Check}
-\begin{itemize}
-    \item Plastic strain is flagged if either the Mariotte or Lamé criterion predicts stresses exceeding the yield strength.
-    \item No significant plastic strain was observed, as both criteria were satisfied under the analyzed conditions.
+    \item The Tresca criterion is used to evaluate plastic strain and failure within the cladding. 
+    \item No significant plastic strain nor failure was observed.
+    \item The minimum cladding thickness was verified.
 \end{itemize}
 
 \subsubsection{Thermal Creep (Time to Rupture)}
@@ -173,14 +165,15 @@ This conservative approach ensures reliability and provides additional safety ma
 
 \textbf{Key Observations:}
 \begin{itemize}
-    \item The time to rupture decreases significantly with lower plenum height due to higher internal pressure.
+    \item The time to rupture decreases significantly with lower plenum height due to lower internal pressure.
+    \item The thermal stresses and mechanical stresses have opposite trends with respect to cladding thickness, the algorithm takes both into account by design.
     \item The optimization process tends to converge toward maximum plenum height and minimum cladding thickness.
 \end{itemize}
 
 Given these trends, additional considerations were taken into account:
 \begin{itemize}
-    \item \textbf{Manufacturability and robustness:} Thin cladding is challenging to produce and more prone to mechanical failure.
-    \item \textbf{Economic implications:} Increasing plenum height raises reactor vessel production costs.
+    \item \textbf{Manufacturability and robustness:} Thin cladding is challenging to produce and more prone to mechanical failure, the minimum required thickness to withstand the inner pressure is $\sim 83 \mu m$
+    \item \textbf{Economic implications:} Increasing plenum height raises reactor vessel production costs, exisiting fast reactor designs have been taken as a reference.
 \end{itemize}
 
 \textbf{Final Constraints:}
@@ -216,7 +209,7 @@ The genetic algorithm produced optimal dimensions:
 \begin{itemize}
     \item The design provides adequate safety margins for all key parameters.
     \item Fission gas release (FGR) was contained within acceptable limits.
-    \item The fuel-cladding gap remained stable throughout the operational cycle.
+    \item The fuel-cladding gap remained open throughout the operational cycle.
 \end{itemize}
 
 \subsection{Plutonium Redistribution}
@@ -224,9 +217,9 @@ The genetic algorithm produced optimal dimensions:
 Plutonium redistribution occurs due to fuel restructuring during operation, leading to the formation of distinct zones within the fuel element:
 
 \begin{itemize}
-    \item \textbf{Central void}: Pores migrate outward, creating a void region and redistributing material.
-    \item \textbf{Columnar grains}: Formed by density changes and pore migration, resulting in localized Plutonium enrichment.
-    \item \textbf{Equiaxed grains}: Developed at high temperatures, with a reduction in Plutonium concentration due to grain growth.
+    \item \textbf{Central void}: Pores migrate outward, creating a void region and redistributing material (Computed by mass balance).
+    \item \textbf{Columnar grains}: Formed by density changes and pore migration, resulting in localized Plutonium enrichment ($T > 1800° C$).
+    \item \textbf{Equiaxed grains}: Developed at high temperatures, with a reduction in Plutonium concentration due to grain growth ($T > 1600° C$).
     \item \textbf{As-fabricated zone}: A stable region with minimal changes due to low temperatures.
 \end{itemize}
 
@@ -242,11 +235,13 @@ Graphical results illustrate these phenomena: Figure~\ref{fig:Pu_Profile} highli
 \end{figure}
 
 \subsubsection*{Impact on Design and Operation}
-Plutonium enrichment in the central zone increases power density, leading to higher local temperatures. This effect must be managed to ensure the fuel remains below its melting point, particularly during extended operation. Redistribution can also exacerbate fuel swelling and impact cladding integrity, requiring careful consideration in the design phase.
+Plutonium enrichment in the central zone increases power density, leading to higher local temperatures. 
+This effect must be managed to ensure the fuel remains below its melting point, particularly during extended operation. 
+Redistribution can also worsen fuel swelling and impact cladding integrity, requiring careful consideration in the design phase.
 
 \subsection{Helium Embrittlement}
 
-Helium embrittlement occurs due to the accumulation of helium at grain boundaries in the cladding material, primarily produced by neutron-induced reactions such as $^{58}$Ni(n,$\alpha$)$^{55}$Fe and $^{10}$B(n,$\alpha$)$^{7}$Li. This leads to:
+Helium embrittlement occurs due to the accumulation of helium at grain boundaries in the cladding material, primarily produced by neutron-induced reactions such as $^{58}$Ni(n,$\alpha$)$^{55}$Fe. This leads to:
 
 \begin{itemize}
     \item \textbf{Loss of ductility}: Making the material more brittle.
@@ -254,11 +249,8 @@ Helium embrittlement occurs due to the accumulation of helium at grain boundarie
     \item \textbf{Increased swelling}: Causing the material to expand under stress.
 \end{itemize}
 
-Helium concentrations after 1 and 2 years of operation are $67$~ppm and $122$~ppm, respectively. These values match those reported in the literature (Olander). A more accurate evaluation would require calculating helium per displacements-per-atom (ppm/DPA), but this information is not available.
-
-\subsubsection*{Impact on Design and Operation}
-
-Helium embrittlement weakens the cladding material, and its effects should be taken into account in the design phase to ensure the cladding can operate safely over time.
+Helium concentrations after 1 and 2 years of operation are $67$~ppm and $122$~ppm, respectively. These values match those reported in the literature (\textit{Olander - Fundamentals Aspects of Nuclear Reactor Fuel Elements}).
+A more accurate evaluation would require calculating helium per displacements-per-atom (ppm/DPA).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -266,9 +258,9 @@ Helium embrittlement weakens the cladding material, and its effects should be ta
 With the selected dimensions, we extended the computation to simulate an uptime of 2 years instead of the initial 1-year design. The results demonstrate the performance and safety of the fuel pin under prolonged operational conditions:
 
 \begin{itemize}
-    \item \textbf{Maximum Fuel Temperature:} 2553.260 K (increased from 2480.096 K).
+    \item {\color{green}\checkmark} \textbf{Maximum Fuel Temperature:} 2553.260 K (increased from 2480.096 K).
     \item \textbf{Maximum Cladding Temperature:} 912.696 K (unchanged).
-    \item \textbf{Plenum Pressure:} 5.409 MPa (limit exceeded, increased from 2.792 MPa).
+    \item {\color{red}\texttimes} \textbf{Plenum Pressure:} 5.409 MPa (limit exceeded, increased from 2.792 MPa).
     \item \textbf{Maximum Instantaneous Cladding Plastic Strain:} 0.000\% (unchanged).
     \item \textbf{Maximum Cladding Volumetric Swelling:} 20.118\% (limit exceeded, increased significantly from 2.900\%).
     \item \textbf{Maximum Coolant Velocity:} 5.558 m/s (increased from 4.779 m/s).
@@ -285,7 +277,7 @@ With the selected dimensions, we extended the computation to simulate an uptime 
     \item The burnup doubled, as expected
     \item The time to rupture decreased drastically from 51.98 years to 4.23 years, showing that thermal creep becomes a significant concern under these conditions.
     \item While the coolant velocity increased, it remained within acceptable operational ranges, highlighting that the thermal-hydraulic design is not a limiting factor in this scenario.
-    \item The decreased gap thickness indicates increased mechanical interaction between the fuel and cladding, which can exacerbate the risks associated with swelling and fuel-cladding mechanical contact.
+    \item The gap thickness decreased but the gap is still open, which guarantees no pellet-cladding interaction.
 \end{itemize}
 
 In summary, the significant rise in cladding swelling, plenum pressure, and reduced time to rupture indicate that this design requires further optimization to handle extended operation cycles safely.
@@ -293,12 +285,21 @@ In summary, the significant rise in cladding swelling, plenum pressure, and redu
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
-The finalized design meets all specified requirements, ensuring safety and reliability for up to a four-year fuel cycle. Conservative assumptions and thorough validation steps provided additional safety margins. The design demonstrates robustness under normal and extended operational conditions.
+The finalized design meets all specified requirements for one year operation, ensuring safety and reliability. 
+Conservative assumptions and thorough validation steps provided additional safety margins. 
+The design demonstrates robustness under normal operating conditions but shows criticalities in extended operational conditions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Appendix}
-All supporting code is available in the following repository: 
-\href{https://github.com/simo-pagliu/NDT-Homeworks}{\textcolor{blue}{NDT-Homeworks Repository}}.
+All supporting code is available in the following repository: \href{https://github.com/simo-pagliu/NDT-Homeworks}{\textcolor{blue}{NDT-Homeworks Repository}}.
+\begin{itemize}
+    \item The final computation can be run from the \verb|Dimensioning.ipynb| Jupyter notebook, which calls functions from \verb|loop.py|.
+    \item In-depth analysis and verification are found within \verb|Verification.ipynb|, which calls functions from \verb|functions.py|.
+    \item \verb|genetic_algorithm.py| contains the implementation of the genetic algorithm.
+    \item \verb|Useful Data.xlsx| contains cross-section data from the JANIS database.
+    \item \verb|nuclei_func.py| contains a collection of functions to calculate nuclear properties.
+\end{itemize}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{document}
