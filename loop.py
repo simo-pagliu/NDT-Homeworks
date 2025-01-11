@@ -661,11 +661,11 @@ def initialize_params(delta, years):
         Density=lambda eth: 7900 * (1 + eth)**-3,  # kg/m^3
         Thermal_Conductivity=lambda t: 13.95 + 0.01163 * t,  # W/m K
         Emissivity = 0.32, # -
-        Thermal_Expansion_Coeff=lambda t: -3.101e-4 + 1.545e-5 * (t-273.15) + 2.75e-9 * (t-273.15)**2,  # 1/°C --> 1/K
+        Thermal_Expansion_Coeff=lambda t: 1.545e-5 + 5.5e-9 * (t - 273.15),  # 1/K. derivative of thermal expansion
         Specific_Heat=500,  # Approximate value in J/kg K for steel
         Melting_Temperature=1673,  # K
         
-        Youngs_Modulus=lambda t: 202.7 - 0.08167 * t,  # GPa
+        Youngs_Modulus=lambda t: (202.7 - 0.08167 * t) * 1e9,  # Pa
         Poissons_Ratio=lambda t: 0.277 + 6e-5 * t,  # Dimensionless
         Yield_Stress=lambda t: 555.5 - 0.25 * t if t < 600 else (405.5 - 0.775 * (t - 600) if t < 1000 else 345.5 - 0.25 * t),  # MPa
         Ultimate_Tensile_Strength=lambda t: 700 - 0.3125 * t if t < 600 else (512.5 - 0.969 * (t - 600) if t < 1000 else 437.5 - 0.3125 * t),  # MPa
@@ -835,18 +835,25 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
         Mariotte_R = - (pressure_in - pressure_out) / 2
         #####################################
         
+        #####################################        
+        # Thermal Stresses 
+        T_cladding_outer = get_temperature_at_point(Geometrical_Data.h_values[i], r_cladding_outer, T_map)
+        T_eval = get_temperature_at_point(Geometrical_Data.h_values[i], r_cladding_mid, T_map)
+        T_cladding_inner = get_temperature_at_point(Geometrical_Data.h_values[i], r_cladding_inner, T_map)
+        T = (T_cladding_outer - T_cladding_inner)/(r_cladding_outer - r_cladding_inner) # [°C/m]
+        O = -r_cladding_outer/(r_cladding_outer - r_cladding_inner)*(T_cladding_outer - T_cladding_inner) + T_cladding_inner  # [°C]           
+        numerator1 = (((r_cladding_mid**2 - r_cladding_inner**2) / (r_cladding_outer**2 - r_cladding_inner**2))* (T / 3 * (r_cladding_outer**3 - r_cladding_inner**3) + O / 2 * (r_cladding_outer**2 - r_cladding_inner**2))- (T / 3 * (r_cladding_mid**3 - r_cladding_inner**3) + O / 2 * (r_cladding_mid**2 - r_cladding_inner**2)))
+        Thermal_Stress_R = Cladding_Proprieties.Thermal_Expansion_Coeff(T_eval) * Cladding_Proprieties.Youngs_Modulus(T_eval) / (1 - Cladding_Proprieties.Poissons_Ratio(T_eval)) / (r_cladding_mid**2) * numerator1
+        numerator2 = (((r_cladding_mid**2 + r_cladding_inner**2) / (r_cladding_outer**2 - r_cladding_inner**2))* (T / 3 * (r_cladding_outer**3 - r_cladding_inner**3) + O / 2 * (r_cladding_outer**2 - r_cladding_inner**2)) + (T / 3 * (r_cladding_mid**3 - r_cladding_inner**3) + O / 2 * (r_cladding_mid**2 - r_cladding_inner**2)) - T_eval * r_cladding_mid**2)
+        Thermal_Stress_Theta = Cladding_Proprieties.Thermal_Expansion_Coeff(T_eval) * Cladding_Proprieties.Youngs_Modulus(T_eval) / (1 - Cladding_Proprieties.Poissons_Ratio(T_eval)) / (r_cladding_mid**2) * numerator2
+        Thermal_Stress_Z = Cladding_Proprieties.Thermal_Expansion_Coeff(T_eval) * Cladding_Proprieties.Youngs_Modulus(T_eval) / (1 - Cladding_Proprieties.Poissons_Ratio(T_eval)) * (2/(r_cladding_outer**2 - r_cladding_inner**2) * (T / 3 * (r_cladding_outer**3 - r_cladding_inner**3) + O / 2 * (r_cladding_outer**2 - r_cladding_inner**2)) - T_eval)
         #####################################
-        # # Lamè Solution
-        # Note: The two criteria are not exclusive, the plastic strain is computed if one of the two is satisfied
-        # We have observed that the Mariotte stress is slightly higher than the Lamè (by decimals) 
-        # Not considered for dimentioning to be conservative
-        # Costant_1 = 2 * (pressure_out - pressure_in) * r_cladding_inner**2 * r_cladding_outer**2 / (r_cladding_outer**2 - r_cladding_inner**2)
-        # Costant_2 = pressure_in + Costant_1 / (2 * r_cladding_inner**2)
-        # # Expressions obtained from stress analysis in Verification.ipynb
-        # Lame_R = -Costant_1/(2*r_cladding_mid**2) + Costant_2
-        # Lame_Theta = Costant_1/(2*r_cladding_mid**2) + Costant_2
-        # Lame_Z = 2*Costant_2
-        # Lame = [Lame_R, Lame_Theta, Lame_Z]
+        
+        #####################################
+        # Total Stress
+        Stress_R = Mariotte_R + Thermal_Stress_R
+        Stress_Theta = Mariotte_Theta + Thermal_Stress_Theta
+        Stress_Z = Mariotte_Z + Thermal_Stress_Z
         #####################################
         
         #####################################
@@ -854,7 +861,7 @@ def mechanical_analysis(ThermoHydraulics, Cladding_Proprieties, Geometrical_Data
         
         # Take the maximum difference between couples of the three stresses
         # TRESCA --> Is easier, is slightly conservative
-        Stress_equivalent = max([abs(Mariotte_R - Mariotte_Theta), abs(Mariotte_R - Mariotte_Z), abs(Mariotte_Theta - Mariotte_Z)]) 
+        Stress_equivalent = max([abs(Stress_R - Stress_Theta), abs(Stress_R - Stress_Z), abs(Stress_Theta - Stress_Z)]) 
         Stress_equivalent = (Stress_equivalent) * 1e-6 # MPa
         stress_Vector.append(Stress_equivalent)
 
