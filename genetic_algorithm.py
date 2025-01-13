@@ -27,7 +27,7 @@ def fitness_func(thickness_cladding, plenum_height):
             "run_limiter": 10,
             "T_fuel_out_initial": 1000
         }
-        T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, burnup, plastic_strain, time_to_rupture =  loop.main(thickness_cladding, plenum_height, settings)
+        T_map, Geometrical_Data, He_percentage, Plenum_Pressure, Coolant_Velocity, Void_Swelling, params, Burnup, coolant_infinity_limit, burnup, plastic_strain, time_to_rupture, Stress =  loop.main(thickness_cladding, plenum_height,1, settings)
 
         # Fuel Max Temperature
         Max_Fuel_Temperature = np.max(T_map.T)
@@ -88,13 +88,23 @@ def fitness_func(thickness_cladding, plenum_height):
         Plenum_Pressure_limit = 5e6
         if Plenum_Pressure > Plenum_Pressure_limit:
             Fitness_Function += fitness_handicap
+
+                # Check for minimum thickness of the cladding
+        Min_Thickness_Cladding = np.min(Geometrical_Data.thickness_cladding)
+        t = np.max(temp_at_midline)
+        Yield_Stress = 555.5 - 0.25 * t if t < 600 else (405.5 - 0.775 * (t - 600) if t < 1000 else 345.5 - 0.25 * t),  # MPa
+        Yield_Stress = Yield_Stress[0]
+        Min_allowed_thickness = np.mean(Geometrical_Data.cladding_outer_diameter) / 2 * Plenum_Pressure / (0.5*Plenum_Pressure + 2/3 * Yield_Stress*1e6)
+        if Min_Thickness_Cladding < Min_allowed_thickness:
+            Fitness_Function += fitness_handicap
     except:
         Fitness_Function = 1e5
+        print("An Unfit Individual has been killed")
     return Fitness_Function
 
-limit_x_low = 80e-6 # Cladding Thickness lower limit
-limit_x = 120e-6 # Cladding Thickness upper limit
-limit_y = 1 # Plenum Height upper limit
+limit_x_low = 100e-6 # Cladding Thickness lower limit
+limit_x = 500e-6 # Cladding Thickness upper limit
+limit_y = 1.5 # Plenum Height upper limit
 limit_y_low = 0.8 # Plenum Height lower limit
 ################################################################################
 

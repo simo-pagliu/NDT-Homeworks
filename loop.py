@@ -579,8 +579,12 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     peak_to_average_ratio = max(q_values) / np.mean(q_values)
     average_neutron_flux = ThermoHydraulics.neutron_flux_peak / peak_to_average_ratio
 
+    q_prime = np.mean(q_values)  # W/m
+    r_gap_fuel = np.mean(np.array(Geometrical_Data.fuel_outer_diameter)) / 2
+    avg_fission_rate = q_prime / (np.pi * r_gap_fuel**2 * 200 * 1.6e-13)  # fissions/m^3 s
+
     # Calculate average fission rate
-    avg_fission_rate = average_neutron_flux * fission_xs * 1e6  # [fissions/m^3 s]
+    # avg_fission_rate = average_neutron_flux * fission_xs * 1e6  # [fissions/m^3 s]
 
     # Diffusivity function
     diffusivity = lambda temperature: d_0 * np.exp(-q / temperature)  # m^2/s
@@ -623,7 +627,8 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
 
     # Corresponding volume to accommodate gases
     r_cladding_gap = np.mean(np.array(Geometrical_Data.cladding_outer_diameter) / 2 - np.array(Geometrical_Data.thickness_cladding))
-    r_gap_fuel = np.mean(np.array(Geometrical_Data.fuel_outer_diameter) / 2)
+    
+    r_mid_gap =  (r_cladding_gap - r_gap_fuel)/2 + r_gap_fuel
     
     V_plenum = (np.pi * r_cladding_gap**2 * h_plenum) + (np.pi * (r_cladding_gap**2 - r_gap_fuel**2) * Geometrical_Data.h_values[-1])
 
@@ -639,7 +644,8 @@ def fission_gas_production(h_plenum, Fuel_Proprieties, ThermoHydraulics, Geometr
     total_moles_gas = initial_moles_he + additional_moles_fg  # moles
 
     # Find the new pressure in the plenum
-    new_p_gas = total_moles_gas * 8.314 * (Geometrical_Data.Initial_Gas_Temperature) / V_plenum  # Pa
+    avg_Temperature = np.mean([get_temperature_at_point(point, r_cladding_gap, T_map) for point in Geometrical_Data.h_values])
+    new_p_gas = total_moles_gas * 8.314 * avg_Temperature / V_plenum  # Pa
 
     return He_percentage, new_p_gas
 
@@ -717,7 +723,7 @@ def initialize_params(delta, years):
         Elements=["He"],
         Qualities=[1],
         Density=0.1786,  # kg/m^3 at STP
-        Thermal_Conductivity=lambda t, x: (15.8e-4 * t**0.79)**x * (0.935e-4 * t**0.79)**(1-x),  # W/m K
+        Thermal_Conductivity=lambda t, x: (15.8e-4 * t**0.79)**x * (1.15e-4 * t**0.79)**(0.5*(1-x)) * (0.72e-4 * t**0.79)**(0.5*(1-x)),  # W/m K
         Specific_Heat=5193,  # J/kg K at constant pressure
         Thermal_Expansion_Coeff=3.66e-3  # Approximate value for helium in 1/°C
     )
