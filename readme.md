@@ -1,4 +1,10 @@
-# Current plan:
+# DONE
+I will update this readme asap below old version.
+
+---
+
+
+## Current plan:
 1) Code all known laws and correlations  
 2) Program all functions and test them indipendently with guess values for unkown
 3) Investigation on gap thickness and  plenum height requirments (2 variable optimization)
